@@ -1,0 +1,13 @@
+name: SilkRoad
+version: '1.0.0'
+main: net.mysterria.silkroad.SilkRoad
+api-version: '1.21'
+prefix: SilkRoad
+authors: [ Djecka1337 ]
+description: A caravan trading system with distance-based resource transfers
+commands:
+  silkroad:
+    description: SilkRoad caravan administration
+    aliases: [ sr ]
+    permission: silkroad.caravan.admin
+    usage: /silkroad

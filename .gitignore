@@ -1,0 +1,8 @@
+.idea
+.gradle
+run
+/run
+/libs
+/libs/
+libs
+build
