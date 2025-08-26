@@ -46,7 +46,6 @@ public final class SilkRoad extends JavaPlugin {
             getLogger().info("Created data folder: " + getDataFolder().getAbsolutePath());
         }
 
-        // Create caravan directories
         if (new java.io.File(getDataFolder(), "caravans").mkdirs()) {
             getLogger().info("Created caravans directory");
         }
