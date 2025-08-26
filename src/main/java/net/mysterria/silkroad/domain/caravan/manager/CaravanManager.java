@@ -12,6 +12,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.*;
 import java.util.logging.Logger;
+import org.bukkit.Bukkit;
 
 public class CaravanManager {
     
@@ -69,7 +70,16 @@ public class CaravanManager {
     }
     
     public Optional<Caravan> getCaravan(String id) {
-        return Optional.ofNullable(caravans.get(id));
+        Caravan caravan = caravans.get(id);
+        if (caravan == null) {
+            // Try to load from storage if not in cache
+            caravan = storage.loadCaravan(id);
+            if (caravan != null && caravan.isActive()) {
+                caravans.put(id, caravan);
+                logger.info("Loaded caravan from storage: " + id);
+            }
+        }
+        return Optional.ofNullable(caravan);
     }
     
     public Collection<Caravan> getAllCaravans() {
@@ -260,6 +270,232 @@ public class CaravanManager {
         
         logger.info("Completed transfer: " + transfer.getId());
         return true;
+    }
+    
+    public boolean addOwner(String caravanId, String playerName) {
+        Caravan caravan = caravans.get(caravanId);
+        if (caravan == null) {
+            return false;
+        }
+        
+        Player player = Bukkit.getPlayer(playerName);
+        if (player == null) {
+            return false;
+        }
+        
+        caravan.addOwner(player.getUniqueId());
+        storage.saveCaravan(caravan);
+        logger.info("Added owner " + playerName + " to caravan " + caravanId);
+        return true;
+    }
+    
+    public boolean addMember(String caravanId, String playerName) {
+        Caravan caravan = caravans.get(caravanId);
+        if (caravan == null) {
+            return false;
+        }
+        
+        Player player = Bukkit.getPlayer(playerName);
+        if (player == null) {
+            return false;
+        }
+        
+        caravan.addMember(player.getUniqueId());
+        storage.saveCaravan(caravan);
+        logger.info("Added member " + playerName + " to caravan " + caravanId);
+        return true;
+    }
+    
+    public boolean removeOwner(String caravanId, String playerName) {
+        Caravan caravan = caravans.get(caravanId);
+        if (caravan == null) {
+            return false;
+        }
+        
+        Player player = Bukkit.getPlayer(playerName);
+        if (player == null) {
+            return false;
+        }
+        
+        caravan.removeOwner(player.getUniqueId());
+        storage.saveCaravan(caravan);
+        logger.info("Removed owner " + playerName + " from caravan " + caravanId);
+        return true;
+    }
+    
+    public boolean removeMember(String caravanId, String playerName) {
+        Caravan caravan = caravans.get(caravanId);
+        if (caravan == null) {
+            return false;
+        }
+        
+        Player player = Bukkit.getPlayer(playerName);
+        if (player == null) {
+            return false;
+        }
+        
+        caravan.removeMember(player.getUniqueId());
+        storage.saveCaravan(caravan);
+        logger.info("Removed member " + playerName + " from caravan " + caravanId);
+        return true;
+    }
+    
+    public List<Caravan> getPlayerCaravans(UUID playerId) {
+        return caravans.values().stream()
+                .filter(caravan -> caravan.hasAccess(playerId))
+                .toList();
+    }
+    
+    public List<Caravan> getPlayerOwnedCaravans(UUID playerId) {
+        return caravans.values().stream()
+                .filter(caravan -> caravan.isOwner(playerId))
+                .toList();
+    }
+    
+    public List<ResourceTransfer> getIncomingTransfers(UUID playerId) {
+        return activeTransfers.values().stream()
+                .filter(transfer -> {
+                    Caravan destination = caravans.get(transfer.getDestinationCaravanId());
+                    return destination != null && destination.hasAccess(playerId);
+                })
+                .sorted((a, b) -> Long.compare(a.getDeliveryTime(), b.getDeliveryTime()))
+                .toList();
+    }
+    
+    public boolean addItemToCaravan(String caravanId, Player player, Material material, int amount) {
+        Caravan caravan = caravans.get(caravanId);
+        if (caravan == null) {
+            Optional<Caravan> loaded = getCaravan(caravanId);
+            if (loaded.isPresent()) {
+                caravan = loaded.get();
+            } else {
+                return false;
+            }
+        }
+        
+        // Check if player has permission to add items (owner or member)
+        if (!caravan.hasAccess(player.getUniqueId())) {
+            return false;
+        }
+        
+        // Check if player has the items in their inventory
+        if (!hasEnoughItems(player, material, amount)) {
+            return false;
+        }
+        
+        // Remove items from player inventory
+        removeItemsFromPlayer(player, material, amount);
+        
+        // Add items to caravan inventory
+        caravan.getInventory().merge(material, amount, Integer::sum);
+        
+        // Save changes
+        storage.saveCaravan(caravan);
+        
+        logger.info("Player " + player.getName() + " added " + amount + " " + material + " to caravan " + caravanId);
+        return true;
+    }
+    
+    public boolean removeItemFromCaravan(String caravanId, Player player, Material material, int amount) {
+        Caravan caravan = caravans.get(caravanId);
+        if (caravan == null) {
+            return false;
+        }
+        
+        // Check if player has permission to remove items (owner or member)  
+        if (!caravan.hasAccess(player.getUniqueId())) {
+            return false;
+        }
+        
+        // Check if caravan has enough items
+        int currentAmount = caravan.getInventory().getOrDefault(material, 0);
+        if (currentAmount < amount) {
+            return false;
+        }
+        
+        // Check if player has inventory space
+        if (!hasInventorySpace(player, material, amount)) {
+            return false;
+        }
+        
+        // Remove from caravan inventory
+        if (currentAmount == amount) {
+            caravan.getInventory().remove(material);
+        } else {
+            caravan.getInventory().put(material, currentAmount - amount);
+        }
+        
+        // Add to player inventory
+        addItemsToPlayer(player, material, amount);
+        
+        // Save changes
+        storage.saveCaravan(caravan);
+        
+        logger.info("Player " + player.getName() + " removed " + amount + " " + material + " from caravan " + caravanId);
+        return true;
+    }
+    
+    private boolean hasEnoughItems(Player player, Material material, int amount) {
+        int playerAmount = 0;
+        for (org.bukkit.inventory.ItemStack item : player.getInventory().getContents()) {
+            if (item != null && item.getType() == material) {
+                playerAmount += item.getAmount();
+            }
+        }
+        return playerAmount >= amount;
+    }
+    
+    private void removeItemsFromPlayer(Player player, Material material, int amount) {
+        int remaining = amount;
+        org.bukkit.inventory.ItemStack[] contents = player.getInventory().getContents();
+        
+        for (int i = 0; i < contents.length && remaining > 0; i++) {
+            org.bukkit.inventory.ItemStack item = contents[i];
+            if (item != null && item.getType() == material) {
+                int itemAmount = item.getAmount();
+                if (itemAmount <= remaining) {
+                    remaining -= itemAmount;
+                    contents[i] = null;
+                } else {
+                    item.setAmount(itemAmount - remaining);
+                    remaining = 0;
+                }
+            }
+        }
+        
+        player.getInventory().setContents(contents);
+        player.updateInventory();
+    }
+    
+    private boolean hasInventorySpace(Player player, Material material, int amount) {
+        int maxStackSize = material.getMaxStackSize();
+        int slotsNeeded = (int) Math.ceil((double) amount / maxStackSize);
+        int emptySlots = 0;
+        int partialSlots = 0;
+        
+        for (org.bukkit.inventory.ItemStack item : player.getInventory().getContents()) {
+            if (item == null) {
+                emptySlots++;
+            } else if (item.getType() == material && item.getAmount() < maxStackSize) {
+                partialSlots++;
+            }
+        }
+        
+        return (emptySlots + partialSlots) >= slotsNeeded;
+    }
+    
+    private void addItemsToPlayer(Player player, Material material, int amount) {
+        int remaining = amount;
+        int maxStackSize = material.getMaxStackSize();
+        
+        while (remaining > 0) {
+            int stackSize = Math.min(remaining, maxStackSize);
+            org.bukkit.inventory.ItemStack itemStack = new org.bukkit.inventory.ItemStack(material, stackSize);
+            player.getInventory().addItem(itemStack);
+            remaining -= stackSize;
+        }
+        
+        player.updateInventory();
     }
     
     public void saveCaravan(Caravan caravan) {

@@ -3,6 +3,7 @@ package net.mysterria.silkroad;
 import dev.rollczi.litecommands.LiteCommands;
 import dev.rollczi.litecommands.bukkit.LiteBukkitFactory;
 import net.mysterria.silkroad.commands.CaravanCommand;
+import net.mysterria.silkroad.commands.CaravanPlayerCommand;
 import net.mysterria.silkroad.domain.caravan.manager.CaravanManager;
 import net.mysterria.silkroad.listeners.CaravanInteractionListener;
 import net.mysterria.silkroad.listeners.CaravanWandListener;
@@ -34,7 +35,7 @@ public final class SilkRoad extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(new CaravanWandListener(caravanManager), this);
 
         this.liteCommands = LiteBukkitFactory.builder("silkroad", this)
-                .commands(new CaravanCommand(this))
+                .commands(new CaravanCommand(this), new CaravanPlayerCommand(this))
                 .build();
                 
         getLogger().info("SilkRoad caravan system enabled successfully!");

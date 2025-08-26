@@ -53,6 +53,19 @@ public class CaravanStorage {
         // Save territory as list of strings
         config.set("territory", new ArrayList<>(caravan.getTerritoryChunks()));
         
+        // Save owners and members
+        List<String> ownersList = new ArrayList<>();
+        for (UUID ownerId : caravan.getOwners()) {
+            ownersList.add(ownerId.toString());
+        }
+        config.set("owners", ownersList);
+        
+        List<String> membersList = new ArrayList<>();
+        for (UUID memberId : caravan.getMembers()) {
+            membersList.add(memberId.toString());
+        }
+        config.set("members", membersList);
+        
         try {
             config.save();
         } catch (Exception e) {
@@ -110,6 +123,36 @@ public class CaravanStorage {
                 for (Object o : territoryList) {
                     if (o != null) {
                         caravan.getTerritoryChunks().add(String.valueOf(o));
+                    }
+                }
+            }
+            
+            // Load owners
+            Object ownersObj = config.get("owners");
+            if (ownersObj instanceof java.util.List<?> ownersList) {
+                for (Object o : ownersList) {
+                    if (o != null) {
+                        try {
+                            UUID ownerId = UUID.fromString(String.valueOf(o));
+                            caravan.addOwner(ownerId);
+                        } catch (IllegalArgumentException e) {
+                            SilkRoad.getInstance().getLogger().warning("Invalid UUID in caravan owners: " + o);
+                        }
+                    }
+                }
+            }
+            
+            // Load members
+            Object membersObj = config.get("members");
+            if (membersObj instanceof java.util.List<?> membersList) {
+                for (Object o : membersList) {
+                    if (o != null) {
+                        try {
+                            UUID memberId = UUID.fromString(String.valueOf(o));
+                            caravan.addMember(memberId);
+                        } catch (IllegalArgumentException e) {
+                            SilkRoad.getInstance().getLogger().warning("Invalid UUID in caravan members: " + o);
+                        }
                     }
                 }
             }

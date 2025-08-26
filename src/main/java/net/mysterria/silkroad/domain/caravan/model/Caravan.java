@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -23,6 +24,9 @@ public class Caravan {
     private boolean active;
     // Territory represented as set of keys: "world:x:z"
     private Set<String> territoryChunks = new HashSet<>();
+    // Member management
+    private Set<UUID> owners = new HashSet<>();
+    private Set<UUID> members = new HashSet<>();
     
     public Caravan(String id, String name, Location location) {
         this.id = id;
@@ -62,6 +66,34 @@ public class Caravan {
     
     public boolean containsChunk(String worldName, int x, int z) {
         return territoryChunks.contains(worldName + ":" + x + ":" + z);
+    }
+    
+    public void addOwner(UUID playerId) {
+        owners.add(playerId);
+    }
+    
+    public void removeOwner(UUID playerId) {
+        owners.remove(playerId);
+    }
+    
+    public void addMember(UUID playerId) {
+        members.add(playerId);
+    }
+    
+    public void removeMember(UUID playerId) {
+        members.remove(playerId);
+    }
+    
+    public boolean isOwner(UUID playerId) {
+        return owners.contains(playerId);
+    }
+    
+    public boolean isMember(UUID playerId) {
+        return members.contains(playerId);
+    }
+    
+    public boolean hasAccess(UUID playerId) {
+        return isOwner(playerId) || isMember(playerId);
     }
     
     @Override
