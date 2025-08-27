@@ -8,6 +8,7 @@ import net.mysterria.silkroad.utils.ShardUtils;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.*;
@@ -399,7 +400,12 @@ public class CaravanManager {
     public boolean removeItemFromCaravan(String caravanId, Player player, Material material, int amount) {
         Caravan caravan = caravans.get(caravanId);
         if (caravan == null) {
-            return false;
+            Optional<Caravan> loaded = getCaravan(caravanId);
+            if (loaded.isPresent()) {
+                caravan = loaded.get();
+            } else {
+                return false;
+            }
         }
         
         // Check if player has permission to remove items (owner or member)  
@@ -433,6 +439,160 @@ public class CaravanManager {
         
         logger.info("Player " + player.getName() + " removed " + amount + " " + material + " from caravan " + caravanId);
         return true;
+    }
+    
+    // New ItemStack-based methods that preserve NBT data
+    public boolean addItemStackToCaravan(String caravanId, Player player, ItemStack itemStack) {
+        if (itemStack == null || itemStack.getType() == Material.AIR) return false;
+        
+        Caravan caravan = caravans.get(caravanId);
+        if (caravan == null) {
+            Optional<Caravan> loaded = getCaravan(caravanId);
+            if (loaded.isPresent()) {
+                caravan = loaded.get();
+            } else {
+                return false;
+            }
+        }
+        
+        // Check if player has permission to add items (owner or member)
+        if (!caravan.hasAccess(player.getUniqueId())) {
+            return false;
+        }
+        
+        // Check if caravan can accept the item stack
+        if (!caravan.canAddItemStack(itemStack)) {
+            return false; // Caravan inventory is full
+        }
+        
+        // Check if player has the items in their inventory
+        if (!hasEnoughItemStacks(player, itemStack)) {
+            return false;
+        }
+        
+        // Remove items from player inventory
+        removeItemStackFromPlayer(player, itemStack);
+        
+        // Add items to caravan inventory
+        boolean added = caravan.addItemStack(itemStack);
+        if (!added) {
+            // If somehow the add failed, return items to player
+            addItemStackToPlayer(player, itemStack);
+            return false;
+        }
+        
+        // Save changes
+        storage.saveCaravan(caravan);
+        
+        logger.info("Player " + player.getName() + " added " + itemStack.getAmount() + " " + itemStack.getType() + " to caravan " + caravanId);
+        return true;
+    }
+    
+    public boolean removeItemStackFromCaravan(String caravanId, Player player, ItemStack itemStack, int amount) {
+        if (itemStack == null || itemStack.getType() == Material.AIR) return false;
+        
+        Caravan caravan = caravans.get(caravanId);
+        if (caravan == null) {
+            Optional<Caravan> loaded = getCaravan(caravanId);
+            if (loaded.isPresent()) {
+                caravan = loaded.get();
+            } else {
+                return false;
+            }
+        }
+        
+        // Check if player has permission to remove items (owner or member)  
+        if (!caravan.hasAccess(player.getUniqueId())) {
+            return false;
+        }
+        
+        // Check if caravan has enough items
+        int currentAmount = caravan.getItemStackAmount(itemStack);
+        if (currentAmount < amount) {
+            return false;
+        }
+        
+        // Check if player has inventory space
+        if (!hasInventorySpaceForItemStack(player, itemStack, amount)) {
+            return false;
+        }
+        
+        // Remove from caravan inventory
+        if (!caravan.removeItemStack(itemStack, amount)) {
+            return false;
+        }
+        
+        // Add to player inventory
+        ItemStack toAdd = itemStack.clone();
+        toAdd.setAmount(amount);
+        addItemStackToPlayer(player, toAdd);
+        
+        // Save changes
+        storage.saveCaravan(caravan);
+        
+        logger.info("Player " + player.getName() + " removed " + amount + " " + itemStack.getType() + " from caravan " + caravanId);
+        return true;
+    }
+    
+    private boolean hasEnoughItemStacks(Player player, ItemStack itemStack) {
+        int playerAmount = 0;
+        for (org.bukkit.inventory.ItemStack item : player.getInventory().getContents()) {
+            if (item != null && item.isSimilar(itemStack)) {
+                playerAmount += item.getAmount();
+            }
+        }
+        return playerAmount >= itemStack.getAmount();
+    }
+    
+    private boolean hasInventorySpaceForItemStack(Player player, ItemStack itemStack, int amount) {
+        // Calculate how much space is available for this item type
+        int availableSpace = 0;
+        int maxStackSize = itemStack.getMaxStackSize();
+        
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (item == null) {
+                // Empty slot can hold a full stack
+                availableSpace += maxStackSize;
+            } else if (item.isSimilar(itemStack) && item.getAmount() < maxStackSize) {
+                // Partial stack of the same item can hold more
+                availableSpace += maxStackSize - item.getAmount();
+            }
+        }
+        
+        return availableSpace >= amount;
+    }
+    
+    private void removeItemStackFromPlayer(Player player, ItemStack itemStack) {
+        int remaining = itemStack.getAmount();
+        
+        for (int i = 0; i < player.getInventory().getSize(); i++) {
+            org.bukkit.inventory.ItemStack item = player.getInventory().getItem(i);
+            if (item != null && item.isSimilar(itemStack)) {
+                if (item.getAmount() <= remaining) {
+                    remaining -= item.getAmount();
+                    player.getInventory().setItem(i, null);
+                } else {
+                    item.setAmount(item.getAmount() - remaining);
+                    remaining = 0;
+                }
+                
+                if (remaining <= 0) {
+                    break;
+                }
+            }
+        }
+        
+        // Update the client inventory after changes
+        player.updateInventory();
+    }
+    
+    private void addItemStackToPlayer(Player player, ItemStack itemStack) {
+        HashMap<Integer, org.bukkit.inventory.ItemStack> overflow = player.getInventory().addItem(itemStack);
+        
+        // If there's overflow, drop the items
+        for (org.bukkit.inventory.ItemStack overflowItem : overflow.values()) {
+            player.getWorld().dropItemNaturally(player.getLocation(), overflowItem);
+        }
     }
     
     private boolean hasEnoughItems(Player player, Material material, int amount) {

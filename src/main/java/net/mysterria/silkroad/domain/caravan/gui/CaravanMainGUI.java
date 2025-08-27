@@ -87,17 +87,20 @@ public class CaravanMainGUI {
         List<Component> lore = new ArrayList<>();
         lore.add(Component.text("Current Resources:").decoration(TextDecoration.ITALIC, false));
         
-        if (currentCaravan.getInventory().isEmpty()) {
+        if (currentCaravan.getItemInventory().isEmpty()) {
             lore.add(Component.text("  No resources stored").decoration(TextDecoration.ITALIC, false));
         } else {
             int count = 0;
-            for (var entry : currentCaravan.getInventory().entrySet()) {
+            for (org.bukkit.inventory.ItemStack itemStack : currentCaravan.getItemInventory()) {
                 if (count >= 5) {
-                    lore.add(Component.text("  ... and " + (currentCaravan.getInventory().size() - 5) + " more")
+                    lore.add(Component.text("  ... and " + (currentCaravan.getItemInventory().size() - 5) + " more")
                             .decoration(TextDecoration.ITALIC, false));
                     break;
                 }
-                lore.add(Component.text("  " + entry.getKey().name() + ": " + entry.getValue())
+                String itemName = itemStack.hasItemMeta() && itemStack.getItemMeta().hasDisplayName() 
+                        ? itemStack.getItemMeta().getDisplayName() 
+                        : itemStack.getType().name().toLowerCase().replace('_', ' ');
+                lore.add(Component.text("  " + itemName + ": " + itemStack.getAmount())
                         .decoration(TextDecoration.ITALIC, false));
                 count++;
             }

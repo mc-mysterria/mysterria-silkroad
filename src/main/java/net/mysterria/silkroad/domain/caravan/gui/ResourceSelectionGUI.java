@@ -14,6 +14,8 @@ import net.mysterria.silkroad.utils.ShardUtils;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 
+import org.bukkit.inventory.ItemStack;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -26,7 +28,8 @@ public class ResourceSelectionGUI {
     private final Caravan sourceCaravan;
     private final Caravan destinationCaravan;
     private final PaginatedGui gui;
-    private final Map<Material, Integer> selectedResources = new HashMap<>();
+    private final Map<Material, Integer> selectedResources = new HashMap<>(); // Legacy
+    private final List<ItemStack> selectedItemStacks = new ArrayList<>(); // New ItemStack-based selection
     
     public ResourceSelectionGUI(CaravanManager caravanManager, Player player, Caravan sourceCaravan, Caravan destinationCaravan) {
         this.caravanManager = caravanManager;
@@ -75,7 +78,7 @@ public class ResourceSelectionGUI {
     private void addResources() {
         gui.clearPageItems();
         
-        if (sourceCaravan.getInventory().isEmpty()) {
+        if (sourceCaravan.getItemInventory().isEmpty()) {
             GuiItem emptyItem = ItemBuilder.from(Material.GRAY_STAINED_GLASS_PANE)
                     .name(Component.text("No Resources Available")
                             .color(NamedTextColor.GRAY)
@@ -88,29 +91,38 @@ public class ResourceSelectionGUI {
             return;
         }
         
-        for (Map.Entry<Material, Integer> entry : sourceCaravan.getInventory().entrySet()) {
-            Material material = entry.getKey();
-            int available = entry.getValue();
-            int selected = selectedResources.getOrDefault(material, 0);
+        for (ItemStack itemStack : sourceCaravan.getItemInventory()) {
+            if (itemStack == null || itemStack.getType() == Material.AIR) continue;
+            
+            // Find how many of this item stack are already selected
+            int selected = 0;
+            for (ItemStack selectedStack : selectedItemStacks) {
+                if (selectedStack.isSimilar(itemStack)) {
+                    selected += selectedStack.getAmount();
+                }
+            }
+            
+            String itemName = itemStack.hasItemMeta() && itemStack.getItemMeta().hasDisplayName() 
+                    ? itemStack.getItemMeta().getDisplayName() 
+                    : itemStack.getType().name().toLowerCase().replace('_', ' ');
             
             List<Component> lore = new ArrayList<>();
-            lore.add(Component.text("Available: " + available).decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text("Available: " + itemStack.getAmount()).decoration(TextDecoration.ITALIC, false));
             lore.add(Component.text("Selected: " + selected)
                     .color(selected > 0 ? NamedTextColor.GREEN : NamedTextColor.GRAY)
                     .decoration(TextDecoration.ITALIC, false));
             lore.add(Component.text(""));
-            lore.add(Component.text("Left-click: +1").decoration(TextDecoration.ITALIC, false));
-            lore.add(Component.text("Right-click: +10").decoration(TextDecoration.ITALIC, false));
-            lore.add(Component.text("Shift-left: -1").decoration(TextDecoration.ITALIC, false));
-            lore.add(Component.text("Shift-right: -10").decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text("Left-click: Select 1").decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text("Right-click: Select half").decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text("Shift-left: Select all").decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.text("Shift-right: Remove from selection").decoration(TextDecoration.ITALIC, false));
             
-            GuiItem item = ItemBuilder.from(material)
-                    .name(Component.text(material.name()).decoration(TextDecoration.ITALIC, false))
+            GuiItem item = ItemBuilder.from(itemStack.clone())
+                    .name(Component.text(itemName).decoration(TextDecoration.ITALIC, false))
                     .lore(lore)
-                    .amount(Math.max(1, Math.min(64, selected > 0 ? selected : 1)))
                     .asGuiItem(event -> {
                         event.setCancelled(true);
-                        handleResourceClick(material, available, event.isLeftClick(), event.isRightClick(), event.isShiftClick());
+                        handleItemStackClick(itemStack, event.isLeftClick(), event.isRightClick(), event.isShiftClick());
                     });
             
             gui.addItem(item);

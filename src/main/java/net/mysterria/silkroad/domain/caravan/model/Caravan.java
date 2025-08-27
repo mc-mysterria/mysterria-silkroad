@@ -4,9 +4,12 @@ import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.inventory.ItemStack;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -16,10 +19,13 @@ import java.util.UUID;
 @Setter
 public class Caravan {
     
+    public static final int MAX_INVENTORY_SLOTS = 36;
+    
     private final String id;
     private String name;
     private Location location;
     private Map<Material, Integer> inventory;
+    private List<ItemStack> itemInventory = new ArrayList<>();
     private long createdAt;
     private boolean active;
     // Territory represented as set of keys: "world:x:z"
@@ -55,6 +61,89 @@ public class Caravan {
     
     public int getResourceAmount(Material material) {
         return inventory.getOrDefault(material, 0);
+    }
+    
+    // New ItemStack-based methods that preserve NBT data
+    public boolean addItemStack(ItemStack itemStack) {
+        if (itemStack == null || itemStack.getType() == Material.AIR) return false;
+        
+        // Try to merge with existing similar items first
+        for (ItemStack existing : itemInventory) {
+            if (existing.isSimilar(itemStack)) {
+                int newAmount = existing.getAmount() + itemStack.getAmount();
+                if (newAmount <= existing.getMaxStackSize()) {
+                    existing.setAmount(newAmount);
+                    return true;
+                }
+            }
+        }
+        
+        // If we can't merge, check if we have space for a new stack
+        if (itemInventory.size() >= MAX_INVENTORY_SLOTS) {
+            return false; // Inventory is full
+        }
+        
+        // Add as new stack
+        itemInventory.add(itemStack.clone());
+        return true;
+    }
+    
+    public boolean canAddItemStack(ItemStack itemStack) {
+        if (itemStack == null || itemStack.getType() == Material.AIR) return false;
+        
+        // Check if we can merge with existing similar items
+        for (ItemStack existing : itemInventory) {
+            if (existing.isSimilar(itemStack)) {
+                int newAmount = existing.getAmount() + itemStack.getAmount();
+                if (newAmount <= existing.getMaxStackSize()) {
+                    return true; // Can merge
+                }
+            }
+        }
+        
+        // Check if we have space for a new stack
+        return itemInventory.size() < MAX_INVENTORY_SLOTS;
+    }
+    
+    public int getAvailableSlots() {
+        return MAX_INVENTORY_SLOTS - itemInventory.size();
+    }
+    
+    public boolean removeItemStack(ItemStack itemToRemove, int amount) {
+        if (itemToRemove == null || itemToRemove.getType() == Material.AIR) return false;
+        
+        int remaining = amount;
+        for (int i = itemInventory.size() - 1; i >= 0; i--) {
+            ItemStack existing = itemInventory.get(i);
+            if (existing.isSimilar(itemToRemove)) {
+                int availableAmount = existing.getAmount();
+                if (availableAmount <= remaining) {
+                    remaining -= availableAmount;
+                    itemInventory.remove(i);
+                } else {
+                    existing.setAmount(availableAmount - remaining);
+                    remaining = 0;
+                }
+                
+                if (remaining == 0) {
+                    return true;
+                }
+            }
+        }
+        
+        return remaining == 0;
+    }
+    
+    public int getItemStackAmount(ItemStack itemStack) {
+        if (itemStack == null || itemStack.getType() == Material.AIR) return 0;
+        
+        int total = 0;
+        for (ItemStack existing : itemInventory) {
+            if (existing.isSimilar(itemStack)) {
+                total += existing.getAmount();
+            }
+        }
+        return total;
     }
     
     public double distanceTo(Caravan other) {

@@ -62,7 +62,7 @@ public class CaravanInventoryGUI {
     }
     
     private void addInventoryItems() {
-        if (caravan.getInventory().isEmpty()) {
+        if (caravan.getItemInventory().isEmpty()) {
             GuiItem emptyItem = ItemBuilder.from(Material.GRAY_STAINED_GLASS_PANE)
                     .name(Component.text("Empty Inventory")
                             .color(NamedTextColor.GRAY)
@@ -75,20 +75,21 @@ public class CaravanInventoryGUI {
             return;
         }
         
-        for (Map.Entry<Material, Integer> entry : caravan.getInventory().entrySet()) {
-            Material material = entry.getKey();
-            int amount = entry.getValue();
+        for (org.bukkit.inventory.ItemStack itemStack : caravan.getItemInventory()) {
+            if (itemStack == null || itemStack.getType() == Material.AIR) continue;
             
-            GuiItem item = ItemBuilder.from(material)
-                    .name(Component.text(material.name()).decoration(TextDecoration.ITALIC, false))
+            String itemName = itemStack.hasItemMeta() && itemStack.getItemMeta().hasDisplayName() 
+                    ? itemStack.getItemMeta().getDisplayName() 
+                    : itemStack.getType().name().toLowerCase().replace('_', ' ');
+            
+            GuiItem item = ItemBuilder.from(itemStack.clone())
                     .lore(
-                            Component.text("Amount: " + amount).decoration(TextDecoration.ITALIC, false),
+                            Component.text("Amount: " + itemStack.getAmount()).decoration(TextDecoration.ITALIC, false),
                             Component.text(""),
                             Component.text("This resource is stored in the caravan")
                                     .color(NamedTextColor.GRAY)
                                     .decoration(TextDecoration.ITALIC, false)
                     )
-                    .amount(Math.min(64, Math.max(1, amount)))
                     .asGuiItem(event -> event.setCancelled(true));
             
             gui.addItem(item);

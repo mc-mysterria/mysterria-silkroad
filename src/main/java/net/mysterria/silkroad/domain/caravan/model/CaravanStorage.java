@@ -7,6 +7,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.inventory.ItemStack;
 
 import java.io.File;
 import java.util.*;
@@ -36,12 +37,17 @@ public class CaravanStorage {
         
         config.set("id", caravan.getId());
         config.set("name", caravan.getName());
-        config.set("location.world", caravan.getLocation().getWorld().getName());
-        config.set("location.x", caravan.getLocation().getX());
-        config.set("location.y", caravan.getLocation().getY());
-        config.set("location.z", caravan.getLocation().getZ());
-        config.set("location.yaw", caravan.getLocation().getYaw());
-        config.set("location.pitch", caravan.getLocation().getPitch());
+        
+        // Create location map
+        Map<String, Object> locationMap = new HashMap<>();
+        locationMap.put("world", caravan.getLocation().getWorld().getName());
+        locationMap.put("x", caravan.getLocation().getX());
+        locationMap.put("y", caravan.getLocation().getY());
+        locationMap.put("z", caravan.getLocation().getZ());
+        locationMap.put("yaw", caravan.getLocation().getYaw());
+        locationMap.put("pitch", caravan.getLocation().getPitch());
+        config.set("location", locationMap);
+        
         config.set("createdAt", caravan.getCreatedAt());
         config.set("active", caravan.isActive());
         
@@ -50,6 +56,15 @@ public class CaravanStorage {
             inventoryMap.put(entry.getKey().name(), entry.getValue());
         }
         config.set("inventory", inventoryMap);
+        
+        // Save ItemStack inventory with NBT data
+        List<Map<String, Object>> itemStacksList = new ArrayList<>();
+        for (ItemStack itemStack : caravan.getItemInventory()) {
+            if (itemStack != null && itemStack.getType() != Material.AIR) {
+                itemStacksList.add(itemStack.serialize());
+            }
+        }
+        config.set("itemInventory", itemStacksList);
         // Save territory as list of strings
         config.set("territory", new ArrayList<>(caravan.getTerritoryChunks()));
         
@@ -83,21 +98,38 @@ public class CaravanStorage {
             YamlConfiguration config = new YamlConfiguration(file);
             
             String name = asString(config.get("name"));
-            String worldName = asString(config.get("location.world"));
+            
+            // Load location - support both old dotted notation and new nested format
+            String worldName;
+            double x, y, z;
+            float yaw, pitch;
+            
+            // Try new nested format first
+            Map<String, Object> locationMap = config.getSection("location");
+            if (locationMap != null && !locationMap.isEmpty()) {
+                worldName = asString(locationMap.get("world"));
+                x = asDouble(locationMap.get("x"));
+                y = asDouble(locationMap.get("y"));
+                z = asDouble(locationMap.get("z"));
+                yaw = (float) asDouble(locationMap.get("yaw"));
+                pitch = (float) asDouble(locationMap.get("pitch"));
+            } else {
+                // Fall back to old dotted notation
+                worldName = asString(config.get("location.world"));
+                x = asDouble(config.get("location.x"));
+                y = asDouble(config.get("location.y"));
+                z = asDouble(config.get("location.z"));
+                yaw = (float) asDouble(config.get("location.yaw"));
+                pitch = (float) asDouble(config.get("location.pitch"));
+            }
+            
             World world = Bukkit.getWorld(worldName);
             if (world == null) {
-                SilkRoad.getInstance().getLogger().warning("World not found for caravan " + id);
+                SilkRoad.getInstance().getLogger().warning("World not found for caravan " + id + ": " + worldName);
                 return null;
             }
             
-            Location location = new Location(
-                world,
-                asDouble(config.get("location.x")),
-                asDouble(config.get("location.y")),
-                asDouble(config.get("location.z")),
-                (float) asDouble(config.get("location.yaw")),
-                (float) asDouble(config.get("location.pitch"))
-            );
+            Location location = new Location(world, x, y, z, yaw, pitch);
             
             Caravan caravan = new Caravan(id, name, location);
             caravan.setCreatedAt(asLong(config.get("createdAt")));
@@ -113,6 +145,23 @@ public class CaravanStorage {
                         caravan.getInventory().put(material, amount);
                     } catch (IllegalArgumentException e) {
                         SilkRoad.getInstance().getLogger().warning("Invalid material in caravan inventory: " + key);
+                    }
+                }
+            }
+            
+            // Load ItemStack inventory with NBT data
+            Object itemInventoryObj = config.get("itemInventory");
+            if (itemInventoryObj instanceof java.util.List<?> itemInventoryList) {
+                for (Object o : itemInventoryList) {
+                    if (o instanceof Map<?, ?> itemData) {
+                        try {
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> itemMap = (Map<String, Object>) itemData;
+                            ItemStack itemStack = ItemStack.deserialize(itemMap);
+                            caravan.getItemInventory().add(itemStack);
+                        } catch (Exception e) {
+                            SilkRoad.getInstance().getLogger().warning("Failed to deserialize ItemStack: " + e.getMessage());
+                        }
                     }
                 }
             }

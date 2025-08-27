@@ -71,7 +71,6 @@ public class YamlConfiguration {
 
     public void set(String path, Object value) {
         data.put(path, value);
-        save();
     }
 
     public Map<String, Object> getSection(String path) {
