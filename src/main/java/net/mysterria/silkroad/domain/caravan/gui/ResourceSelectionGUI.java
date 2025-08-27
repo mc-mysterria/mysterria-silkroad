@@ -122,7 +122,7 @@ public class ResourceSelectionGUI {
                     .lore(lore)
                     .asGuiItem(event -> {
                         event.setCancelled(true);
-                        handleItemStackClick(itemStack, event.isLeftClick(), event.isRightClick(), event.isShiftClick());
+                        //handleItemStackClick(itemStack, event.isLeftClick(), event.isRightClick(), event.isShiftClick());
                     });
             
             gui.addItem(item);
