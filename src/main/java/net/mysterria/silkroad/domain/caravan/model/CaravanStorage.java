@@ -68,18 +68,15 @@ public class CaravanStorage {
         // Save territory as list of strings
         config.set("territory", new ArrayList<>(caravan.getTerritoryChunks()));
         
-        // Save owners and members
-        List<String> ownersList = new ArrayList<>();
-        for (UUID ownerId : caravan.getOwners()) {
-            ownersList.add(ownerId.toString());
-        }
-        config.set("owners", ownersList);
-        
+        // Save members (new unified system)
         List<String> membersList = new ArrayList<>();
         for (UUID memberId : caravan.getMembers()) {
             membersList.add(memberId.toString());
         }
         config.set("members", membersList);
+        
+        // Save empty owners list for backwards compatibility
+        config.set("owners", new ArrayList<>());
         
         try {
             config.save();
@@ -176,22 +173,7 @@ public class CaravanStorage {
                 }
             }
             
-            // Load owners
-            Object ownersObj = config.get("owners");
-            if (ownersObj instanceof java.util.List<?> ownersList) {
-                for (Object o : ownersList) {
-                    if (o != null) {
-                        try {
-                            UUID ownerId = UUID.fromString(String.valueOf(o));
-                            caravan.addOwner(ownerId);
-                        } catch (IllegalArgumentException e) {
-                            SilkRoad.getInstance().getLogger().warning("Invalid UUID in caravan owners: " + o);
-                        }
-                    }
-                }
-            }
-            
-            // Load members
+            // Load members from new unified system
             Object membersObj = config.get("members");
             if (membersObj instanceof java.util.List<?> membersList) {
                 for (Object o : membersList) {
@@ -201,6 +183,22 @@ public class CaravanStorage {
                             caravan.addMember(memberId);
                         } catch (IllegalArgumentException e) {
                             SilkRoad.getInstance().getLogger().warning("Invalid UUID in caravan members: " + o);
+                        }
+                    }
+                }
+            }
+            
+            // MIGRATION: Load old owners and convert them to members (backwards compatibility)
+            Object ownersObj = config.get("owners");
+            if (ownersObj instanceof java.util.List<?> ownersList) {
+                for (Object o : ownersList) {
+                    if (o != null) {
+                        try {
+                            UUID ownerId = UUID.fromString(String.valueOf(o));
+                            caravan.addMember(ownerId); // Add as member instead of owner
+                            SilkRoad.getInstance().getLogger().info("Migrated owner to member for caravan " + id + ": " + ownerId);
+                        } catch (IllegalArgumentException e) {
+                            SilkRoad.getInstance().getLogger().warning("Invalid UUID in caravan owners: " + o);
                         }
                     }
                 }
@@ -247,11 +245,20 @@ public class CaravanStorage {
         config.set("cost", transfer.getCost());
         config.set("status", transfer.getStatus().name());
         
+        // Save legacy Material-based resources (for backwards compatibility)
         Map<String, Object> resourcesMap = new HashMap<>();
         for (Map.Entry<Material, Integer> entry : transfer.getResources().entrySet()) {
             resourcesMap.put(entry.getKey().name(), entry.getValue());
         }
         config.set("resources", resourcesMap);
+        
+        // Save ItemStack-based resources (preserves NBT data)
+        List<Map<String, Object>> itemResourcesList = new ArrayList<>();
+        for (ItemStack item : transfer.getItemResources()) {
+            Map<String, Object> itemMap = item.serialize();
+            itemResourcesList.add(itemMap);
+        }
+        config.set("itemResources", itemResourcesList);
         
         try {
             config.save();
@@ -294,8 +301,35 @@ public class CaravanStorage {
                 }
             }
             
-            ResourceTransfer transfer = new ResourceTransfer(id, sourceCaravanId, destinationCaravanId,
-                    playerId, playerName, resources, createdAt, deliveryTime, distance, cost);
+            // Load ItemStack-based resources (preserves NBT data)
+            List<ItemStack> itemResources = new ArrayList<>();
+            Object itemResourcesObj = config.get("itemResources");
+            if (itemResourcesObj instanceof java.util.List<?> itemResourcesList) {
+                for (Object o : itemResourcesList) {
+                    if (o instanceof Map<?, ?> itemData) {
+                        try {
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> itemMap = (Map<String, Object>) itemData;
+                            ItemStack itemStack = ItemStack.deserialize(itemMap);
+                            itemResources.add(itemStack);
+                        } catch (Exception e) {
+                            SilkRoad.getInstance().getLogger().warning("Failed to deserialize ItemStack in transfer: " + e.getMessage());
+                        }
+                    }
+                }
+            }
+            
+            // Create transfer with appropriate constructor based on what data we have
+            ResourceTransfer transfer;
+            if (!itemResources.isEmpty()) {
+                // Use ItemStack-based constructor (preferred for new transfers)
+                transfer = new ResourceTransfer(id, sourceCaravanId, destinationCaravanId,
+                        playerId, playerName, itemResources, createdAt, deliveryTime, distance, cost);
+            } else {
+                // Use legacy Material-based constructor (for backwards compatibility)
+                transfer = new ResourceTransfer(id, sourceCaravanId, destinationCaravanId,
+                        playerId, playerName, resources, createdAt, deliveryTime, distance, cost);
+            }
             transfer.setStatus(status);
             
             return transfer;

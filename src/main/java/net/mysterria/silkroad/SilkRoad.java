@@ -4,6 +4,7 @@ import dev.rollczi.litecommands.LiteCommands;
 import dev.rollczi.litecommands.bukkit.LiteBukkitFactory;
 import net.mysterria.silkroad.commands.CaravanCommand;
 import net.mysterria.silkroad.commands.CaravanPlayerCommand;
+import net.mysterria.silkroad.config.SilkRoadConfig;
 import net.mysterria.silkroad.domain.caravan.manager.CaravanManager;
 import net.mysterria.silkroad.listeners.CaravanInteractionListener;
 import net.mysterria.silkroad.listeners.CaravanWandListener;
@@ -19,15 +20,21 @@ public final class SilkRoad extends JavaPlugin {
 
     private CaravanManager caravanManager;
     private LiteCommands<CommandSender> liteCommands;
+    private SilkRoadConfig pluginConfig;
 
     @Getter
     private static SilkRoad instance;
+    
+    public SilkRoadConfig getPluginConfig() {
+        return pluginConfig;
+    }
 
     @Override
     public void onEnable() {
         instance = this;
 
         createDataFolders();
+        this.pluginConfig = new SilkRoadConfig();
         
         this.caravanManager = new CaravanManager();
         

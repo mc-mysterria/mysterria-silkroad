@@ -1,6 +1,7 @@
 package net.mysterria.silkroad.domain.caravan.manager;
 
 import net.mysterria.silkroad.SilkRoad;
+import net.mysterria.silkroad.config.SilkRoadConfig;
 import net.mysterria.silkroad.domain.caravan.model.Caravan;
 import net.mysterria.silkroad.domain.caravan.model.CaravanStorage;
 import net.mysterria.silkroad.domain.caravan.model.ResourceTransfer;
@@ -115,7 +116,85 @@ public class CaravanManager {
         }
     }
     
+    /**
+     * Creates a transfer using ItemStacks (preferred method)
+     */
     public ResourceTransfer createTransfer(Player player, String sourceCaravanId, String destinationCaravanId, 
+                                         List<ItemStack> itemResources) {
+        Caravan source = caravans.get(sourceCaravanId);
+        Caravan destination = caravans.get(destinationCaravanId);
+        
+        if (source == null || destination == null) {
+            return null;
+        }
+        
+        // Check if source caravan has enough item resources
+        for (ItemStack item : itemResources) {
+            if (source.getItemStackAmount(item) < item.getAmount()) {
+                return null;
+            }
+        }
+        
+        double distance = source.distanceTo(destination);
+        int cost = calculateItemTransferCost(distance, itemResources);
+        
+        // USING ENERGY SHARDS FOR TRANSFER COST
+        SilkRoadConfig config = SilkRoad.getInstance().getPluginConfig();
+        if (config.isTransferDebugEnabled()) {
+            logger.info("DEBUG: Transfer cost calculated as " + cost + " shards for player " + player.getName());
+        }
+        
+        // Check if player has enough shards to pay for the transfer
+        if (!hasEnoughShards(player, cost)) {
+            if (config.isTransferDebugEnabled()) {
+                logger.info("DEBUG: Player " + player.getName() + " does not have enough shards. Required: " + cost + ", Has: " + countPlayerShards(player));
+            }
+            return null; // Not enough shards
+        }
+        
+        if (config.isTransferDebugEnabled()) {
+            logger.info("DEBUG: Player " + player.getName() + " has enough shards (" + countPlayerShards(player) + "/" + cost + ")");
+        }
+        
+        // Consume shards from player's inventory
+        if (!consumeShards(player, cost)) {
+            if (config.isTransferDebugEnabled()) {
+                logger.info("DEBUG: Failed to consume shards from player " + player.getName() + " inventory");
+            }
+            return null; // Failed to consume shards
+        }
+        
+        if (config.isTransferDebugEnabled()) {
+            logger.info("DEBUG: Successfully consumed " + cost + " shards from player " + player.getName());
+        }
+        
+        long deliveryTime = System.currentTimeMillis() + calculateDeliveryTime(distance);
+        
+        String transferId = UUID.randomUUID().toString();
+        ResourceTransfer transfer = new ResourceTransfer(transferId, sourceCaravanId, destinationCaravanId, 
+                player, itemResources, distance, cost, deliveryTime);
+        
+        // Remove item resources from source caravan
+        for (ItemStack item : itemResources) {
+            source.removeItemStack(item, item.getAmount());
+        }
+        
+        transfer.setStatus(ResourceTransfer.TransferStatus.IN_TRANSIT);
+        activeTransfers.put(transferId, transfer);
+        
+        storage.saveCaravan(source);
+        storage.saveTransfer(transfer);
+        
+        logger.info("Created ItemStack transfer: " + transferId + " from " + sourceCaravanId + " to " + destinationCaravanId + " for " + cost + " shards");
+        return transfer;
+    }
+    
+    /**
+     * @deprecated Use createTransfer(Player, String, String, List<ItemStack>) instead.
+     * Creates a transfer using legacy Material-based resources (for backwards compatibility)
+     */
+    @Deprecated
+    public ResourceTransfer createTransferLegacy(Player player, String sourceCaravanId, String destinationCaravanId, 
                                          Map<Material, Integer> resources) {
         Caravan source = caravans.get(sourceCaravanId);
         Caravan destination = caravans.get(destinationCaravanId);
@@ -132,7 +211,7 @@ public class CaravanManager {
         }
         
         double distance = source.distanceTo(destination);
-        int cost = calculateTransferCost(distance, resources);
+        int cost = calculateTransferCostLegacy(distance, resources);
         
         // Check if player has enough shards to pay for the transfer
         if (ShardUtils.getTotalPlayerShards(player) < cost) {
@@ -161,7 +240,7 @@ public class CaravanManager {
         storage.saveCaravan(source);
         storage.saveTransfer(transfer);
         
-        logger.info("Created transfer: " + transferId + " from " + sourceCaravanId + " to " + destinationCaravanId + " for " + cost + " shards");
+        logger.info("Created legacy transfer: " + transferId + " from " + sourceCaravanId + " to " + destinationCaravanId + " for " + cost + " shards");
         return transfer;
     }
     
@@ -176,7 +255,7 @@ public class CaravanManager {
                 .toList();
     }
     
-    private int calculateTransferCost(double distance, Map<Material, Integer> resources) {
+    private int calculateTransferCostLegacy(double distance, Map<Material, Integer> resources) {
         int totalItems = resources.values().stream().mapToInt(Integer::intValue).sum();
         double baseCost = distance * 0.1;
         double itemCost = totalItems * 0.5;
@@ -184,9 +263,10 @@ public class CaravanManager {
     }
     
     private long calculateDeliveryTime(double distance) {
-        double baseTime = 5 * 60 * 1000;
-        double distanceTime = distance * 1000;
-        return (long) (baseTime + distanceTime);
+        SilkRoadConfig config = SilkRoad.getInstance().getPluginConfig();
+        long baseTime = config.getBaseTimeMs();
+        long distanceTime = (long) (distance * config.getTimePerBlockMs());
+        return baseTime + distanceTime;
     }
     
     private void loadCaravans() {
@@ -213,7 +293,8 @@ public class CaravanManager {
             ResourceTransfer transfer = storage.loadTransfer(id);
             if (transfer != null && 
                 (transfer.getStatus() == ResourceTransfer.TransferStatus.IN_TRANSIT ||
-                 transfer.getStatus() == ResourceTransfer.TransferStatus.PENDING)) {
+                 transfer.getStatus() == ResourceTransfer.TransferStatus.PENDING ||
+                 transfer.getStatus() == ResourceTransfer.TransferStatus.DELIVERED)) {
                 activeTransfers.put(id, transfer);
             }
         }
@@ -242,9 +323,13 @@ public class CaravanManager {
             }
         }
         
+        // Only remove completed transfers that were successfully processed
+        // Delivered transfers stay active until claimed
         for (ResourceTransfer transfer : completed) {
-            activeTransfers.remove(transfer.getId());
-            storage.deleteTransfer(transfer.getId());
+            if (transfer.getStatus() != ResourceTransfer.TransferStatus.DELIVERED) {
+                activeTransfers.remove(transfer.getId());
+                storage.deleteTransfer(transfer.getId());
+            }
         }
     }
     
@@ -256,38 +341,18 @@ public class CaravanManager {
             return false;
         }
         
-        for (Map.Entry<Material, Integer> entry : transfer.getResources().entrySet()) {
-            destination.addResource(entry.getKey(), entry.getValue());
-        }
-        
+        // Mark as delivered but don't add to caravan inventory yet
+        // Players will need to claim the transfer
         transfer.setStatus(ResourceTransfer.TransferStatus.DELIVERED);
-        storage.saveCaravan(destination);
         storage.saveTransfer(transfer);
         
         Player player = SilkRoad.getInstance().getServer().getPlayer(transfer.getPlayerId());
         if (player != null && player.isOnline()) {
-            player.sendMessage("§aYour caravan delivery has been completed!");
+            player.sendMessage("§a✓ Your caravan delivery has arrived! Use /silkroad transfers to claim it.");
         }
         
-        logger.info("Completed transfer: " + transfer.getId());
-        return true;
-    }
-    
-    public boolean addOwner(String caravanId, String playerName) {
-        Caravan caravan = caravans.get(caravanId);
-        if (caravan == null) {
-            return false;
-        }
-        
-        Player player = Bukkit.getPlayer(playerName);
-        if (player == null) {
-            return false;
-        }
-        
-        caravan.addOwner(player.getUniqueId());
-        storage.saveCaravan(caravan);
-        logger.info("Added owner " + playerName + " to caravan " + caravanId);
-        return true;
+        logger.info("Transfer ready for claiming: " + transfer.getId());
+        return false; // Don't remove from active transfers yet - wait for claim
     }
     
     public boolean addMember(String caravanId, String playerName) {
@@ -304,23 +369,6 @@ public class CaravanManager {
         caravan.addMember(player.getUniqueId());
         storage.saveCaravan(caravan);
         logger.info("Added member " + playerName + " to caravan " + caravanId);
-        return true;
-    }
-    
-    public boolean removeOwner(String caravanId, String playerName) {
-        Caravan caravan = caravans.get(caravanId);
-        if (caravan == null) {
-            return false;
-        }
-        
-        Player player = Bukkit.getPlayer(playerName);
-        if (player == null) {
-            return false;
-        }
-        
-        caravan.removeOwner(player.getUniqueId());
-        storage.saveCaravan(caravan);
-        logger.info("Removed owner " + playerName + " from caravan " + caravanId);
         return true;
     }
     
@@ -341,16 +389,34 @@ public class CaravanManager {
         return true;
     }
     
+    // Deprecated methods for backwards compatibility
+    @Deprecated
+    public boolean addOwner(String caravanId, String playerName) {
+        return addMember(caravanId, playerName);
+    }
+    
+    @Deprecated
+    public boolean removeOwner(String caravanId, String playerName) {
+        return removeMember(caravanId, playerName);
+    }
+    
     public List<Caravan> getPlayerCaravans(UUID playerId) {
         return caravans.values().stream()
                 .filter(caravan -> caravan.hasAccess(playerId))
                 .toList();
     }
     
-    public List<Caravan> getPlayerOwnedCaravans(UUID playerId) {
+    // Renamed for clarity - returns caravans where player is a member (has full access)
+    public List<Caravan> getPlayerMemberCaravans(UUID playerId) {
         return caravans.values().stream()
-                .filter(caravan -> caravan.isOwner(playerId))
+                .filter(caravan -> caravan.isMember(playerId))
                 .toList();
+    }
+    
+    // Deprecated method for backwards compatibility
+    @Deprecated
+    public List<Caravan> getPlayerOwnedCaravans(UUID playerId) {
+        return getPlayerMemberCaravans(playerId);
     }
     
     public List<ResourceTransfer> getIncomingTransfers(UUID playerId) {
@@ -359,6 +425,27 @@ public class CaravanManager {
                     Caravan destination = caravans.get(transfer.getDestinationCaravanId());
                     return destination != null && destination.hasAccess(playerId);
                 })
+                .sorted((a, b) -> Long.compare(a.getDeliveryTime(), b.getDeliveryTime()))
+                .toList();
+    }
+    
+    public List<ResourceTransfer> getDeliveredTransfersForPlayer(UUID playerId) {
+        return activeTransfers.values().stream()
+                .filter(transfer -> transfer.getPlayerId().equals(playerId) && 
+                        transfer.getStatus() == ResourceTransfer.TransferStatus.DELIVERED)
+                .sorted((a, b) -> Long.compare(a.getDeliveryTime(), b.getDeliveryTime()))
+                .toList();
+    }
+    
+    public List<ResourceTransfer> getDeliveredTransfersForCaravan(String caravanId, UUID playerId) {
+        Caravan caravan = caravans.get(caravanId);
+        if (caravan == null || !caravan.hasAccess(playerId)) {
+            return new ArrayList<>();
+        }
+        
+        return activeTransfers.values().stream()
+                .filter(transfer -> transfer.getDestinationCaravanId().equals(caravanId) && 
+                        transfer.getStatus() == ResourceTransfer.TransferStatus.DELIVERED)
                 .sorted((a, b) -> Long.compare(a.getDeliveryTime(), b.getDeliveryTime()))
                 .toList();
     }
@@ -658,6 +745,111 @@ public class CaravanManager {
         player.updateInventory();
     }
     
+    public boolean claimTransferToInventory(String transferId, Player player) {
+        ResourceTransfer transfer = activeTransfers.get(transferId);
+        if (transfer == null || transfer.getStatus() != ResourceTransfer.TransferStatus.DELIVERED) {
+            return false;
+        }
+        
+        // Check if player has permission to claim this transfer
+        if (!transfer.getPlayerId().equals(player.getUniqueId())) {
+            Caravan destination = caravans.get(transfer.getDestinationCaravanId());
+            if (destination == null || !destination.hasAccess(player.getUniqueId())) {
+                return false;
+            }
+        }
+        
+        // Check inventory space for legacy Material-based resources
+        for (Map.Entry<Material, Integer> entry : transfer.getResources().entrySet()) {
+            if (!hasInventorySpace(player, entry.getKey(), entry.getValue())) {
+                return false;
+            }
+        }
+        
+        // Check inventory space for ItemStack-based resources
+        for (ItemStack item : transfer.getItemResources()) {
+            if (!hasInventorySpaceForItemStack(player, item, item.getAmount())) {
+                return false;
+            }
+        }
+        
+        // Add resources to player inventory
+        for (Map.Entry<Material, Integer> entry : transfer.getResources().entrySet()) {
+            addItemsToPlayer(player, entry.getKey(), entry.getValue());
+        }
+        
+        for (ItemStack item : transfer.getItemResources()) {
+            addItemStackToPlayer(player, item.clone());
+        }
+        
+        // Remove transfer from active transfers and delete from storage
+        activeTransfers.remove(transferId);
+        storage.deleteTransfer(transferId);
+        
+        logger.info("Player " + player.getName() + " claimed transfer " + transferId + " to inventory");
+        return true;
+    }
+    
+    public boolean claimTransferToCaravan(String transferId, String caravanId, Player player) {
+        ResourceTransfer transfer = activeTransfers.get(transferId);
+        if (transfer == null || transfer.getStatus() != ResourceTransfer.TransferStatus.DELIVERED) {
+            return false;
+        }
+        
+        Caravan caravan = caravans.get(caravanId);
+        if (caravan == null || !caravan.hasAccess(player.getUniqueId())) {
+            return false;
+        }
+        
+        // Check if player has permission to claim this transfer
+        if (!transfer.getPlayerId().equals(player.getUniqueId())) {
+            Caravan destination = caravans.get(transfer.getDestinationCaravanId());
+            if (destination == null || !destination.hasAccess(player.getUniqueId())) {
+                return false;
+            }
+        }
+        
+        // Check caravan inventory space for ItemStack-based resources
+        for (ItemStack item : transfer.getItemResources()) {
+            if (!caravan.canAddItemStack(item)) {
+                return false;
+            }
+        }
+        
+        // Add resources to caravan
+        for (Map.Entry<Material, Integer> entry : transfer.getResources().entrySet()) {
+            caravan.addResource(entry.getKey(), entry.getValue());
+        }
+        
+        for (ItemStack item : transfer.getItemResources()) {
+            caravan.addItemStack(item.clone());
+        }
+        
+        // Save caravan changes
+        storage.saveCaravan(caravan);
+        
+        // Remove transfer from active transfers and delete from storage
+        activeTransfers.remove(transferId);
+        storage.deleteTransfer(transferId);
+        
+        logger.info("Player " + player.getName() + " claimed transfer " + transferId + " to caravan " + caravanId);
+        return true;
+    }
+    
+    
+    private int calculateItemTransferCost(double distance, List<ItemStack> itemResources) {
+        SilkRoadConfig config = SilkRoad.getInstance().getPluginConfig();
+        
+        // Distance cost from config (diamonds per block)
+        double distanceCost = distance * config.getDistanceCostPerBlock();
+        
+        // Stack cost from config (diamonds per item stack)
+        int stackCount = itemResources.size();
+        double stackCost = stackCount * config.getStackCost();
+        
+        return (int) Math.max(config.getMinimumCost(), distanceCost + stackCost);
+    }
+
     public void saveCaravan(Caravan caravan) {
         storage.saveCaravan(caravan);
     }
@@ -673,6 +865,61 @@ public class CaravanManager {
         
         for (ResourceTransfer transfer : activeTransfers.values()) {
             storage.saveTransfer(transfer);
+        }
+    }
+    
+    // ENERGY SHARD-BASED COST SYSTEM METHODS
+    // Uses SacredOrder plugin's energy shard system
+    
+    private boolean hasEnoughShards(Player player, int amount) {
+        int shardCount = countPlayerShards(player);
+        return shardCount >= amount;
+    }
+    
+    private boolean consumeShards(Player player, int amount) {
+        if (!hasEnoughShards(player, amount)) {
+            return false;
+        }
+        
+        int remaining = amount;
+        ItemStack[] contents = player.getInventory().getContents();
+        
+        for (int i = 0; i < contents.length && remaining > 0; i++) {
+            ItemStack item = contents[i];
+            if (item != null && isEnergyShard(item)) {
+                int itemAmount = item.getAmount();
+                if (itemAmount <= remaining) {
+                    remaining -= itemAmount;
+                    contents[i] = null;
+                } else {
+                    item.setAmount(itemAmount - remaining);
+                    remaining = 0;
+                }
+            }
+        }
+        
+        player.getInventory().setContents(contents);
+        player.updateInventory();
+        return true;
+    }
+    
+    private int countPlayerShards(Player player) {
+        int shardCount = 0;
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (item != null && isEnergyShard(item)) {
+                shardCount += item.getAmount();
+            }
+        }
+        return shardCount;
+    }
+    
+    private boolean isEnergyShard(ItemStack item) {
+        org.bukkit.plugin.Plugin sacredOrderPlugin = Bukkit.getPluginManager().getPlugin("SacredOrder");
+        if (sacredOrderPlugin != null) {
+            org.bukkit.NamespacedKey key = new org.bukkit.NamespacedKey(sacredOrderPlugin, "shard");
+            return item.hasItemMeta() && item.getItemMeta().getPersistentDataContainer().has(key, org.bukkit.persistence.PersistentDataType.BOOLEAN);
+        } else {
+            return false;
         }
     }
     

@@ -225,7 +225,7 @@ public class ResourceSelectionGUI {
             return;
         }
         
-        ResourceTransfer transfer = caravanManager.createTransfer(player, sourceCaravan.getId(), 
+        ResourceTransfer transfer = caravanManager.createTransferLegacy(player, sourceCaravan.getId(), 
                 destinationCaravan.getId(), new HashMap<>(selectedResources));
         
         if (transfer != null) {

@@ -3,6 +3,8 @@ package net.mysterria.silkroad.domain.caravan.gui;
 import dev.triumphteam.gui.builder.item.PaperItemBuilder;
 import dev.triumphteam.gui.guis.Gui;
 import dev.triumphteam.gui.guis.GuiItem;
+import net.mysterria.silkroad.SilkRoad;
+import net.mysterria.silkroad.config.SilkRoadConfig;
 import net.mysterria.silkroad.domain.caravan.manager.CaravanManager;
 import net.mysterria.silkroad.domain.caravan.model.Caravan;
 import net.mysterria.silkroad.domain.caravan.model.ResourceTransfer;
@@ -23,7 +25,9 @@ public class ResourceTransferGUI {
     private final Player player;
     private final Caravan sourceCaravan;
     private final Caravan destinationCaravan;
-    private final Map<Material, Integer> selectedResources = new HashMap<>();
+    private final List<ItemStack> selectedItems = new ArrayList<>();
+    private final Map<ItemStack, Integer> selectionAmounts = new HashMap<>();
+    private boolean showingConfirmation = false;
     
     public ResourceTransferGUI(CaravanManager caravanManager, Player player, 
                                Caravan sourceCaravan, Caravan destinationCaravan) {
@@ -31,42 +35,69 @@ public class ResourceTransferGUI {
         this.player = player;
         this.sourceCaravan = sourceCaravan;
         this.destinationCaravan = destinationCaravan;
+        
+        // Automatically select all inventory items
+        autoSelectAllItems();
     }
     
     public void open() {
-        Gui gui = Gui.gui()
-                .title(text("§6Select Resources to Transfer"))
-                .rows(6)
-                .create();
+        if (sourceCaravan.getItemInventory().isEmpty()) {
+            player.sendMessage("§cThis caravan has no items to transfer!");
+            return;
+        }
         
-        setupResourceSelection(gui);
-        gui.open(player);
+        // Show confirmation preview with all items auto-selected
+        showConfirmationPreview();
     }
     
     private void setupResourceSelection(Gui gui) {
         int slot = 0;
-        for (var entry : sourceCaravan.getInventory().entrySet()) {
+        
+        // Use ItemStack inventory instead of Material inventory
+        for (ItemStack itemStack : sourceCaravan.getItemInventory()) {
             if (slot >= 36) break;
+            if (itemStack == null || itemStack.getType() == Material.AIR) continue;
             
-            Material material = entry.getKey();
-            int available = entry.getValue();
-            int selected = selectedResources.getOrDefault(material, 0);
+            int available = itemStack.getAmount();
+            int selected = getSelectedAmount(itemStack);
+            String itemName = getItemDisplayName(itemStack);
             
-            ItemStack displayItem = new ItemStack(material, Math.min(available, 64));
+            // Create display item with visual selection indicator
+            ItemStack displayItem = itemStack.clone();
+            displayItem.setAmount(Math.min(available, 64));
+            
+            List<String> lore = new ArrayList<>();
+            lore.add("§7Available: §e" + available);
+            lore.add("§7Selected: " + (selected > 0 ? "§a" + selected : "§70"));
+            
+            // Show NBT preservation info
+            if (itemStack.hasItemMeta()) {
+                lore.add("");
+                lore.add("§a✓ NBT Data Preserved:");
+                if (itemStack.getItemMeta().hasDisplayName()) {
+                    lore.add("  §b• Custom Name");
+                }
+                if (itemStack.getItemMeta().hasLore()) {
+                    lore.add("  §b• Custom Lore");
+                }
+                if (itemStack.getItemMeta().hasEnchants()) {
+                    lore.add("  §d• Enchantments");
+                }
+            }
+            
+            lore.add("");
+            lore.add("§eLeft-click: +1");
+            lore.add("§eShift Left-click: +10");
+            lore.add("§eRight-click: -1");
+            lore.add("§eShift Right-click: -10");
+            lore.add("§eMiddle-click: Select all");
             
             GuiItem item = PaperItemBuilder.from(displayItem)
-                    .name(text("§f" + material.name().toLowerCase().replace('_', ' ')))
-                    .lore(text("§7Available: §e" + available),
-                          text("§7Selected: §a" + selected),
-                          text(""),
-                          text("§eLeft-click: +1"),
-                          text("§eShift Left-click: +10"),
-                          text("§eRight-click: -1"),
-                          text("§eShift Right-click: -10"),
-                          text("§eMiddle-click: Select all"))
+                    .name(text((selected > 0 ? "§a" : "§f") + itemName))
+                    .lore(lore.stream().map(this::text).toArray(Component[]::new))
                     .asGuiItem(event -> {
                         event.setCancelled(true);
-                        handleResourceClick(material, available, event.getClick());
+                        handleItemClick(itemStack, available, event.getClick());
                         setupResourceSelection(gui);
                     });
             
@@ -74,10 +105,10 @@ public class ResourceTransferGUI {
             slot++;
         }
         
-        if (sourceCaravan.getInventory().isEmpty()) {
+        if (sourceCaravan.getItemInventory().isEmpty()) {
             GuiItem emptyItem = PaperItemBuilder.from(Material.BARRIER)
-                    .name(text("§7No Resources"))
-                    .lore(text("§7This caravan has no resources to transfer"))
+                    .name(text("§7No Items"))
+                    .lore(text("§7This caravan has no items to transfer"))
                     .asGuiItem(event -> event.setCancelled(true));
             gui.setItem(22, emptyItem);
         }
@@ -102,7 +133,8 @@ public class ResourceTransferGUI {
                 .lore(text("§7Click to clear all selected resources"))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
-                    selectedResources.clear();
+                    selectedItems.clear();
+                    selectionAmounts.clear();
                     setupResourceSelection(gui);
                 });
         gui.setItem(44, clearItem);
@@ -125,8 +157,8 @@ public class ResourceTransferGUI {
         gui.setItem(49, closeItem);
     }
     
-    private void handleResourceClick(Material material, int available, org.bukkit.event.inventory.ClickType clickType) {
-        int current = selectedResources.getOrDefault(material, 0);
+    private void handleItemClick(ItemStack itemStack, int available, org.bukkit.event.inventory.ClickType clickType) {
+        int current = getSelectedAmount(itemStack);
         int change = 0;
         
         switch (clickType) {
@@ -143,7 +175,7 @@ public class ResourceTransferGUI {
                 change = -10;
                 break;
             case MIDDLE:
-                selectedResources.put(material, available);
+                setSelectedAmount(itemStack, available);
                 return;
             default:
                 return;
@@ -152,10 +184,73 @@ public class ResourceTransferGUI {
         int newAmount = Math.max(0, Math.min(available, current + change));
         
         if (newAmount == 0) {
-            selectedResources.remove(material);
+            removeFromSelection(itemStack);
         } else {
-            selectedResources.put(material, newAmount);
+            setSelectedAmount(itemStack, newAmount);
         }
+    }
+    
+    private int getSelectedAmount(ItemStack itemStack) {
+        ItemStack existing = findSimilarInSelection(itemStack);
+        return existing != null ? selectionAmounts.get(existing) : 0;
+    }
+    
+    private void setSelectedAmount(ItemStack itemStack, int amount) {
+        ItemStack existing = findSimilarInSelection(itemStack);
+        if (existing != null) {
+            selectionAmounts.put(existing, amount);
+        } else {
+            ItemStack selectedItem = itemStack.clone();
+            selectedItem.setAmount(amount);
+            selectedItems.add(selectedItem);
+            selectionAmounts.put(selectedItem, amount);
+        }
+    }
+    
+    private void removeFromSelection(ItemStack itemStack) {
+        ItemStack existing = findSimilarInSelection(itemStack);
+        if (existing != null) {
+            selectedItems.remove(existing);
+            selectionAmounts.remove(existing);
+        }
+    }
+    
+    private ItemStack findSimilarInSelection(ItemStack itemStack) {
+        for (ItemStack selected : selectedItems) {
+            if (selected.isSimilar(itemStack)) {
+                return selected;
+            }
+        }
+        return null;
+    }
+    
+    private String getItemDisplayName(ItemStack item) {
+        if (item == null || item.getType() == Material.AIR) {
+            return "Air";
+        }
+        
+        // Try to get custom display name first
+        if (item.hasItemMeta() && item.getItemMeta().hasDisplayName()) {
+            Component displayName = item.getItemMeta().displayName();
+            if (displayName != null) {
+                return displayName.toString();
+            }
+        }
+        
+        // Fall back to material name, formatted nicely
+        String materialName = item.getType().name();
+        String[] words = materialName.toLowerCase().replace('_', ' ').split(" ");
+        StringBuilder result = new StringBuilder();
+        
+        for (String word : words) {
+            if (!word.isEmpty()) {
+                result.append(Character.toUpperCase(word.charAt(0)))
+                      .append(word.substring(1))
+                      .append(" ");
+            }
+        }
+        
+        return result.toString().trim();
     }
     
     private List<String> createTransferInfo() {
@@ -170,62 +265,82 @@ public class ResourceTransferGUI {
             info.add("§7Distance: §f" + String.format("%.1f blocks", distance));
         }
         
-        if (!selectedResources.isEmpty()) {
-            int totalItems = selectedResources.values().stream().mapToInt(Integer::intValue).sum();
-            int estimatedCost = calculateTransferCost(distance, selectedResources);
+        if (!selectedItems.isEmpty()) {
+            int totalItems = selectionAmounts.values().stream().mapToInt(Integer::intValue).sum();
+            int estimatedCost = calculateItemTransferCost(distance, selectedItems);
             long estimatedTime = calculateDeliveryTime(distance);
             
             info.add("§7Items: §e" + totalItems);
             info.add("§7Est. Cost: §6" + estimatedCost + " shards");
             info.add("§7Est. Time: §f" + formatTime(estimatedTime));
+            info.add("§a§lNBT Data Preserved!");
             info.add("");
-            info.add("§7Selected Resources:");
-            for (var entry : selectedResources.entrySet()) {
-                info.add("  §8- §f" + entry.getValue() + "x " + 
-                        entry.getKey().name().toLowerCase().replace('_', ' '));
+            info.add("§7Selected Items:");
+            for (ItemStack item : selectedItems) {
+                int amount = selectionAmounts.get(item);
+                String itemName = getItemDisplayName(item);
+                info.add("  §8- §f" + amount + "x " + itemName);
             }
         } else {
-            info.add("§7No resources selected");
+            info.add("§7No items selected");
         }
         
         return info;
     }
     
     private void executeTransfer() {
-        if (selectedResources.isEmpty()) {
-            player.sendMessage("§cNo resources selected for transfer!");
+        if (selectedItems.isEmpty()) {
+            player.sendMessage("§cNo items selected for transfer!");
             return;
+        }
+        
+        // Create the list of items to transfer with correct amounts
+        List<ItemStack> itemsToTransfer = new ArrayList<>();
+        for (ItemStack selectedItem : selectedItems) {
+            int amount = selectionAmounts.get(selectedItem);
+            ItemStack transferItem = selectedItem.clone();
+            transferItem.setAmount(amount);
+            itemsToTransfer.add(transferItem);
         }
         
         ResourceTransfer transfer = caravanManager.createTransfer(
                 player, 
                 sourceCaravan.getId(), 
                 destinationCaravan.getId(), 
-                selectedResources
+                itemsToTransfer
         );
         
         if (transfer != null) {
-            player.sendMessage("§aTransfer created successfully!");
+            player.sendMessage("§a✓ Transfer created successfully!");
             player.sendMessage("§7Transfer ID: §f" + transfer.getId().substring(0, 8));
+            player.sendMessage("§7Items: §e" + itemsToTransfer.size() + " §7different types");
             player.sendMessage("§7Cost: §6" + transfer.getCost() + " shards");
             player.sendMessage("§7Delivery time: §f" + formatTime(transfer.getRemainingTime()));
+            player.sendMessage("§a✓ All NBT data (enchantments, names, lore) has been preserved!");
             player.closeInventory();
         } else {
-            player.sendMessage("§cTransfer failed! Check that you have enough shards and the caravan has enough resources.");
+            player.sendMessage("§cTransfer failed! Check that you have enough shards and the caravan has enough items.");
         }
     }
     
-    private int calculateTransferCost(double distance, Map<Material, Integer> resources) {
-        int totalItems = resources.values().stream().mapToInt(Integer::intValue).sum();
-        double baseCost = distance * 0.1;
-        double itemCost = totalItems * 0.5;
-        return (int) Math.max(1, baseCost + itemCost);
+    private int calculateItemTransferCost(double distance, List<ItemStack> items) {
+        SilkRoadConfig config = SilkRoad.getInstance().getPluginConfig();
+        
+        // Distance cost from config (diamonds per block)
+        double distanceCost = distance * config.getDistanceCostPerBlock();
+        
+        // Stack cost from config (diamonds per item stack)
+        int stackCount = items.size();
+        double stackCost = stackCount * config.getStackCost();
+        
+        return (int) Math.max(config.getMinimumCost(), distanceCost + stackCost);
     }
     
     private long calculateDeliveryTime(double distance) {
-        double baseTime = 5 * 60 * 1000;
-        double distanceTime = distance * 1000;
-        return (long) (baseTime + distanceTime);
+        SilkRoadConfig config = SilkRoad.getInstance().getPluginConfig();
+        long baseTime = config.getBaseTimeMs();
+        long distanceTime = (long) (distance * config.getTimePerBlockMs());
+        return baseTime + distanceTime;
     }
     
     private String formatTime(long millis) {
@@ -246,5 +361,126 @@ public class ResourceTransferGUI {
     
     private Component text(String legacyText) {
         return LegacyComponentSerializer.legacySection().deserialize(legacyText);
+    }
+    
+    private void autoSelectAllItems() {
+        selectedItems.clear();
+        selectionAmounts.clear();
+        
+        // Select all items from the source caravan inventory
+        for (ItemStack itemStack : sourceCaravan.getItemInventory()) {
+            if (itemStack != null && itemStack.getType() != Material.AIR) {
+                ItemStack selectedItem = itemStack.clone();
+                selectedItems.add(selectedItem);
+                selectionAmounts.put(selectedItem, itemStack.getAmount());
+            }
+        }
+    }
+    
+    private void showConfirmationPreview() {
+        Gui gui = Gui.gui()
+                .title(text("§6Transfer Preview - Confirm Transfer"))
+                .rows(6)
+                .create();
+        
+        // Display preview of all items being transferred
+        int slot = 0;
+        for (ItemStack item : selectedItems) {
+            if (slot >= 36) break;
+            
+            int amount = selectionAmounts.get(item);
+            String itemName = getItemDisplayName(item);
+            
+            ItemStack displayItem = item.clone();
+            displayItem.setAmount(Math.min(amount, 64));
+            
+            List<String> lore = new ArrayList<>();
+            lore.add("§a✓ Selected for Transfer");
+            lore.add("§7Amount: §e" + amount);
+            
+            // Show NBT preservation info
+            if (item.hasItemMeta()) {
+                lore.add("");
+                lore.add("§a✓ NBT Data Will Be Preserved:");
+                if (item.getItemMeta().hasDisplayName()) {
+                    lore.add("  §b• Custom Name");
+                }
+                if (item.getItemMeta().hasLore()) {
+                    lore.add("  §b• Custom Lore");
+                }
+                if (item.getItemMeta().hasEnchants()) {
+                    lore.add("  §d• Enchantments");
+                }
+            }
+            
+            GuiItem guiItem = PaperItemBuilder.from(displayItem)
+                    .name(text("§a" + itemName))
+                    .lore(lore.stream().map(this::text).toArray(Component[]::new))
+                    .asGuiItem(event -> event.setCancelled(true));
+            
+            gui.setItem(slot, guiItem);
+            slot++;
+        }
+        
+        // Transfer information panel
+        GuiItem infoItem = PaperItemBuilder.from(Material.PAPER)
+                .name(text("§6Transfer Details"))
+                .lore(createTransferInfo().stream().map(this::text).toArray(Component[]::new))
+                .asGuiItem(event -> event.setCancelled(true));
+        gui.setItem(40, infoItem);
+        
+        // Confirm transfer button
+        GuiItem confirmItem = PaperItemBuilder.from(Material.LIME_CONCRETE)
+                .name(text("§a§lCONFIRM TRANSFER"))
+                .lore(text("§7Click to execute the transfer"),
+                      text("§7All inventory will be transferred"),
+                      text("§a§lNBT data will be preserved!"))
+                .asGuiItem(event -> {
+                    event.setCancelled(true);
+                    executeTransfer();
+                });
+        gui.setItem(42, confirmItem);
+        
+        // Edit selection button (goes back to manual selection)
+        GuiItem editItem = PaperItemBuilder.from(Material.YELLOW_CONCRETE)
+                .name(text("§e§lEDIT SELECTION"))
+                .lore(text("§7Click to manually adjust items"),
+                      text("§7Opens the detailed selection GUI"))
+                .asGuiItem(event -> {
+                    event.setCancelled(true);
+                    showDetailedSelection();
+                });
+        gui.setItem(44, editItem);
+        
+        // Back button
+        GuiItem backItem = PaperItemBuilder.from(Material.ARROW)
+                .name(text("§7← Back"))
+                .asGuiItem(event -> {
+                    event.setCancelled(true);
+                    CaravanManagementGUI managementGUI = new CaravanManagementGUI(caravanManager, player);
+                    managementGUI.open();
+                });
+        gui.setItem(45, backItem);
+        
+        // Close button
+        GuiItem closeItem = PaperItemBuilder.from(Material.BARRIER)
+                .name(text("§cClose"))
+                .asGuiItem(event -> {
+                    event.setCancelled(true);
+                    player.closeInventory();
+                });
+        gui.setItem(49, closeItem);
+        
+        gui.open(player);
+    }
+    
+    private void showDetailedSelection() {
+        Gui gui = Gui.gui()
+                .title(text("§6Edit Transfer Selection"))
+                .rows(6)
+                .create();
+        
+        setupResourceSelection(gui);
+        gui.open(player);
     }
 }

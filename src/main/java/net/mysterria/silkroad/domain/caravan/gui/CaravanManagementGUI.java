@@ -71,7 +71,10 @@ public class CaravanManagementGUI {
             slot++;
         }
         
+        // Transfer management section
         List<ResourceTransfer> incomingTransfers = caravanManager.getIncomingTransfers(player.getUniqueId());
+        List<ResourceTransfer> deliveredTransfers = caravanManager.getDeliveredTransfersForPlayer(player.getUniqueId());
+        
         if (!incomingTransfers.isEmpty()) {
             GuiItem transfersItem = PaperItemBuilder.from(Material.CHEST_MINECART)
                     .name(text("§aIncoming Transfers"))
@@ -81,8 +84,32 @@ public class CaravanManagementGUI {
                         event.setCancelled(true);
                         openIncomingTransfers(incomingTransfers);
                     });
-            gui.setItem(49, transfersItem);
+            gui.setItem(48, transfersItem);
         }
+        
+        if (!deliveredTransfers.isEmpty()) {
+            GuiItem claimTransfersItem = PaperItemBuilder.from(Material.EMERALD)
+                    .name(text("§aDelivered Transfers"))
+                    .lore(text("§7You have §e" + deliveredTransfers.size() + " §7transfers ready to claim"),
+                          text("§eClick to claim your transfers"))
+                    .asGuiItem(event -> {
+                        event.setCancelled(true);
+                        TransferClaimGUI claimGUI = new TransferClaimGUI(caravanManager, player);
+                        claimGUI.open();
+                    });
+            gui.setItem(49, claimTransfersItem);
+        }
+        
+        // All transfers overview button
+        GuiItem allTransfersItem = PaperItemBuilder.from(Material.COMPASS)
+                .name(text("§bAll Transfers"))
+                .lore(text("§7View all your transfers and their status"),
+                      text("§7Including active and completed transfers"))
+                .asGuiItem(event -> {
+                    event.setCancelled(true);
+                    openAllTransfersGUI();
+                });
+        gui.setItem(50, allTransfersItem);
         
         GuiItem closeItem = PaperItemBuilder.from(Material.BARRIER)
                 .name(text("§cClose"))
@@ -256,6 +283,7 @@ public class CaravanManagementGUI {
     }
     
     private void openResourceSelectionGUI(Caravan source, Caravan destination) {
+        // Use existing working transfer GUI (will be enhanced later)
         ResourceTransferGUI transferGUI = new ResourceTransferGUI(caravanManager, player, source, destination);
         transferGUI.open();
     }
@@ -312,6 +340,101 @@ public class CaravanManagementGUI {
                     .lore(text("§7You have no incoming transfers"))
                     .asGuiItem(event -> event.setCancelled(true));
             gui.setItem(22, emptyItem);
+        }
+        
+        GuiItem backItem = PaperItemBuilder.from(Material.ARROW)
+                .name(text("§7← Back"))
+                .asGuiItem(event -> {
+                    event.setCancelled(true);
+                    open();
+                });
+        gui.setItem(45, backItem);
+        
+        gui.open(player);
+    }
+    
+    private void openAllTransfersGUI() {
+        List<ResourceTransfer> playerTransfers = caravanManager.getPlayerTransfers(player.getUniqueId());
+        List<ResourceTransfer> deliveredTransfers = caravanManager.getDeliveredTransfersForPlayer(player.getUniqueId());
+        
+        Gui gui = Gui.gui()
+                .title(text("§bAll Your Transfers"))
+                .rows(6)
+                .create();
+        
+        List<ResourceTransfer> allTransfers = new ArrayList<>();
+        allTransfers.addAll(playerTransfers);
+        allTransfers.addAll(deliveredTransfers);
+        
+        // Sort by creation time (newest first)
+        allTransfers.sort((a, b) -> Long.compare(b.getCreatedAt(), a.getCreatedAt()));
+        
+        int slot = 0;
+        for (ResourceTransfer transfer : allTransfers) {
+            if (slot >= 45) break;
+            
+            String status = transfer.getStatus().name();
+            String timeInfo = switch (transfer.getStatus()) {
+                case PENDING, IN_TRANSIT -> "ETA: " + formatTime(transfer.getRemainingTime());
+                case DELIVERED -> "Ready to claim";
+                case FAILED -> "Failed";
+            };
+            
+            Material statusMaterial = switch (transfer.getStatus()) {
+                case IN_TRANSIT -> Material.MINECART;
+                case PENDING -> Material.HOPPER;
+                case DELIVERED -> Material.EMERALD;
+                case FAILED -> Material.RED_WOOL;
+            };
+            
+            List<String> lore = new ArrayList<>();
+            lore.add("§7From: §d" + transfer.getSourceCaravanId());
+            lore.add("§7To: §d" + transfer.getDestinationCaravanId());
+            lore.add("§7Status: §f" + status);
+            lore.add("§7" + timeInfo);
+            lore.add("§7Distance: §f" + String.format("%.1f blocks", transfer.getDistance()));
+            lore.add("§7Cost: §6" + transfer.getCost() + " shards");
+            
+            if (transfer.getStatus() == ResourceTransfer.TransferStatus.DELIVERED) {
+                lore.add("");
+                lore.add("§aClick to claim this transfer!");
+            }
+            
+            GuiItem item = PaperItemBuilder.from(statusMaterial)
+                    .name(text("§eTransfer #" + transfer.getId().substring(0, 8)))
+                    .lore(lore.stream().map(this::text).toArray(Component[]::new))
+                    .asGuiItem(event -> {
+                        event.setCancelled(true);
+                        if (transfer.getStatus() == ResourceTransfer.TransferStatus.DELIVERED) {
+                            TransferClaimGUI claimGUI = new TransferClaimGUI(caravanManager, player);
+                            claimGUI.open();
+                        }
+                    });
+            
+            gui.setItem(slot, item);
+            slot++;
+        }
+        
+        if (allTransfers.isEmpty()) {
+            GuiItem emptyItem = PaperItemBuilder.from(Material.BARRIER)
+                    .name(text("§7No Transfers"))
+                    .lore(text("§7You have no transfers yet"))
+                    .asGuiItem(event -> event.setCancelled(true));
+            gui.setItem(22, emptyItem);
+        }
+        
+        // Quick claim button if there are delivered transfers
+        if (!deliveredTransfers.isEmpty()) {
+            GuiItem quickClaimItem = PaperItemBuilder.from(Material.DIAMOND)
+                    .name(text("§a✓ Quick Claim All"))
+                    .lore(text("§7Claim all " + deliveredTransfers.size() + " delivered transfers"),
+                          text("§eClick to open claim interface"))
+                    .asGuiItem(event -> {
+                        event.setCancelled(true);
+                        TransferClaimGUI claimGUI = new TransferClaimGUI(caravanManager, player);
+                        claimGUI.open();
+                    });
+            gui.setItem(53, quickClaimItem);
         }
         
         GuiItem backItem = PaperItemBuilder.from(Material.ARROW)

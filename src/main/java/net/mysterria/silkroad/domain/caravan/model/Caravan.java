@@ -30,8 +30,7 @@ public class Caravan {
     private boolean active;
     // Territory represented as set of keys: "world:x:z"
     private Set<String> territoryChunks = new HashSet<>();
-    // Member management
-    private Set<UUID> owners = new HashSet<>();
+    // Member management - all members have equal rights
     private Set<UUID> members = new HashSet<>();
     
     public Caravan(String id, String name, Location location) {
@@ -157,14 +156,6 @@ public class Caravan {
         return territoryChunks.contains(worldName + ":" + x + ":" + z);
     }
     
-    public void addOwner(UUID playerId) {
-        owners.add(playerId);
-    }
-    
-    public void removeOwner(UUID playerId) {
-        owners.remove(playerId);
-    }
-    
     public void addMember(UUID playerId) {
         members.add(playerId);
     }
@@ -173,16 +164,28 @@ public class Caravan {
         members.remove(playerId);
     }
     
-    public boolean isOwner(UUID playerId) {
-        return owners.contains(playerId);
-    }
-    
     public boolean isMember(UUID playerId) {
         return members.contains(playerId);
     }
     
     public boolean hasAccess(UUID playerId) {
-        return isOwner(playerId) || isMember(playerId);
+        return isMember(playerId);
+    }
+    
+    // Deprecated methods for backwards compatibility
+    @Deprecated
+    public void addOwner(UUID playerId) {
+        addMember(playerId);
+    }
+    
+    @Deprecated
+    public void removeOwner(UUID playerId) {
+        removeMember(playerId);
+    }
+    
+    @Deprecated
+    public boolean isOwner(UUID playerId) {
+        return isMember(playerId);
     }
     
     @Override

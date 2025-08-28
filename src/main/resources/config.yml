@@ -1,0 +1,23 @@
+# SilkRoad Plugin Configuration
+
+# Transfer cost calculation settings
+transfer:
+  cost:
+    # Cost per block distance (0.1 = 10 diamonds per 100 blocks)
+    distance_cost_per_block: 0.1
+    # Cost per item stack being transferred (regardless of stack size)
+    stack_cost: 2.0
+    # Minimum cost for any transfer
+    minimum_cost: 1
+
+# Delivery time calculation settings
+delivery:
+  # Base time for any transfer (in milliseconds)
+  base_time_ms: 1000  # 1 second
+  # Additional time per block distance (in milliseconds)
+  time_per_block_ms: 1000  # 1 second per block
+
+# General plugin settings
+debug:
+  # Enable debug logging for transfers
+  transfer_debug: true
