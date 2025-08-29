@@ -103,11 +103,11 @@ public class CaravanManager {
             logger.info("Caravan " + id + " assigned to town: " + validation.getTownName() + " (ID: " + validation.getTownId() + ")");
             
             // Automatically add all town members to the caravan
-            Set<UUID> townMembers = HuskTownsIntegration.getTownMemberUUIDs(validation.getTownId());
+            /*Set<UUID> townMembers = HuskTownsIntegration.getTownMemberUUIDs(validation.getTownId());
             for (UUID memberUuid : townMembers) {
                 caravan.addMember(memberUuid);
             }
-            logger.info("Added " + townMembers.size() + " town members to caravan " + id);
+            logger.info("Added " + townMembers.size() + " town members to caravan " + id);*/
         }
         caravans.put(id, caravan);
         storage.saveCaravan(caravan);
