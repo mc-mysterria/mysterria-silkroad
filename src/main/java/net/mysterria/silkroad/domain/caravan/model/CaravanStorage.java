@@ -78,6 +78,14 @@ public class CaravanStorage {
         // Save empty owners list for backwards compatibility
         config.set("owners", new ArrayList<>());
         
+        // Save town ownership information (HuskTowns integration)
+        if (caravan.getOwningTownName() != null) {
+            config.set("owningTownName", caravan.getOwningTownName());
+        }
+        if (caravan.getOwningTownId() != -1) {
+            config.set("owningTownId", caravan.getOwningTownId());
+        }
+        
         try {
             config.save();
         } catch (Exception e) {
@@ -202,6 +210,17 @@ public class CaravanStorage {
                         }
                     }
                 }
+            }
+            
+            // Load town ownership information (HuskTowns integration)
+            String owningTownName = asString(config.get("owningTownName"));
+            if (owningTownName != null && !owningTownName.isEmpty()) {
+                caravan.setOwningTownName(owningTownName);
+            }
+            
+            int owningTownId = asInt(config.get("owningTownId"));
+            if (owningTownId != 0) { // 0 is default when config value is missing
+                caravan.setOwningTownId(owningTownId);
             }
             
             return caravan;

@@ -7,6 +7,7 @@ import dev.rollczi.litecommands.annotations.execute.Execute;
 import dev.rollczi.litecommands.annotations.permission.Permission;
 import net.mysterria.silkroad.SilkRoad;
 import net.mysterria.silkroad.domain.caravan.manager.CaravanManager;
+import net.mysterria.silkroad.domain.caravan.manager.CaravanCreationResult;
 import net.mysterria.silkroad.domain.caravan.model.Caravan;
 import net.mysterria.silkroad.domain.caravan.model.ResourceTransfer;
 import org.bukkit.Material;
@@ -33,7 +34,7 @@ public class CaravanCommand {
         ItemMeta meta = wand.getItemMeta();
         if (meta != null) {
             meta.setDisplayName("§6Caravan Territory Wand");
-            meta.setLore(List.of("§7Right-click: §aSelect current chunk", "§7Left-click: §cDeselect current chunk", "§7Use §e/sr create <name> §7to create caravan from selected chunks"));
+            meta.setLore(List.of("§7Right-click: §aSelect current chunk", "§7Left-click: §cDeselect current chunk", "§7Shift + Left-click: §c✖ Clear all selections", "§7Use §e/sr create <name> §7to create caravan from selected chunks"));
             meta.setCustomModelData(12345);
             wand.setItemMeta(meta);
         }
@@ -50,24 +51,19 @@ public class CaravanCommand {
             return;
         }
 
-        if (caravanManager.getCaravan(id).isPresent()) {
-            sender.sendMessage("§cA caravan with that name already exists!");
-            return;
-        }
-
         var selection = caravanManager.getSelection(sender.getUniqueId());
         if (selection.isEmpty()) {
             sender.sendMessage("§cYou have no selected chunks! §7Use the wand to select chunks first.");
             return;
         }
 
-        Caravan caravan = caravanManager.createCaravan(id, name, sender.getLocation(), new java.util.HashSet<>(selection));
-        if (caravan != null) {
-            String message = "§aCreated caravan: §d" + name + "§a with §e" + selection.size() + " §achunk(s).";
-            sender.sendMessage(message);
+        CaravanCreationResult result = caravanManager.createCaravanWithValidation(id, name, sender.getLocation(), new java.util.HashSet<>(selection));
+        
+        if (result.isSuccess()) {
+            sender.sendMessage("§aCreated caravan: §d" + name + "§a with §e" + selection.size() + " §achunk(s).");
             caravanManager.clearSelection(sender.getUniqueId());
         } else {
-            sender.sendMessage("§cFailed to create caravan!");
+            sender.sendMessage(result.getMessage());
         }
     }
 
@@ -112,6 +108,19 @@ public class CaravanCommand {
         sb.append("§7Name: §d").append(caravan.getName()).append("\n");
         sb.append("§7ID: §f").append(caravan.getId()).append("\n");
         sb.append("§7Location: §f").append(String.format("%.1f, %.1f, %.1f in %s", caravan.getLocation().getX(), caravan.getLocation().getY(), caravan.getLocation().getZ(), caravan.getLocation().getWorld().getName())).append("\n");
+        
+        // Display town ownership information if available
+        if (caravan.getOwningTownName() != null) {
+            sb.append("§7Town: §b").append(caravan.getOwningTownName());
+            if (caravan.getOwningTownId() != -1) {
+                sb.append(" §7(ID: §f").append(caravan.getOwningTownId()).append("§7)");
+            }
+            sb.append("\n");
+        } else {
+            sb.append("§7Town: §8None (Unclaimed territory)\n");
+        }
+        
+        sb.append("§7Territory Chunks: §f").append(caravan.getTerritoryChunks().size()).append("\n");
         sb.append("§7Resources: ");
         if (caravan.getInventory().isEmpty()) {
             sb.append("§fNone");

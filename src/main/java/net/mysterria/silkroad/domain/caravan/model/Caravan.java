@@ -32,6 +32,9 @@ public class Caravan {
     private Set<String> territoryChunks = new HashSet<>();
     // Member management - all members have equal rights
     private Set<UUID> members = new HashSet<>();
+    // Town ownership information (HuskTowns integration)
+    private String owningTownName;
+    private int owningTownId = -1;
     
     public Caravan(String id, String name, Location location) {
         this.id = id;

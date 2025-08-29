@@ -44,7 +44,11 @@ public class CaravanWandListener implements Listener {
         if (event.getAction() == Action.RIGHT_CLICK_BLOCK || event.getAction() == Action.RIGHT_CLICK_AIR) {
             handleSelectChunk(player, true);
         } else if (event.getAction() == Action.LEFT_CLICK_BLOCK || event.getAction() == Action.LEFT_CLICK_AIR) {
-            handleSelectChunk(player, false);
+            if (player.isSneaking()) {
+                handleClearAllSelections(player);
+            } else {
+                handleSelectChunk(player, false);
+            }
         }
     }
     
@@ -83,5 +87,19 @@ public class CaravanWandListener implements Listener {
             }
         }
         player.sendActionBar("§6Selection: §e" + count + " §7chunk(s)");
+    }
+    
+    private void handleClearAllSelections(Player player) {
+        int previousCount = caravanManager.getSelection(player.getUniqueId()).size();
+        
+        if (previousCount == 0) {
+            player.sendMessage("§7No chunks selected to clear.");
+            player.sendActionBar("§6Selection: §e0 §7chunk(s)");
+            return;
+        }
+        
+        caravanManager.clearSelection(player.getUniqueId());
+        player.sendMessage("§c✖ Cleared all selections! §7(" + previousCount + " chunk" + (previousCount == 1 ? "" : "s") + " deselected)");
+        player.sendActionBar("§6Selection: §e0 §7chunk(s)");
     }
 }

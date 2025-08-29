@@ -6,6 +6,7 @@ import net.mysterria.silkroad.domain.caravan.model.Caravan;
 import net.mysterria.silkroad.domain.caravan.model.CaravanStorage;
 import net.mysterria.silkroad.domain.caravan.model.ResourceTransfer;
 import net.mysterria.silkroad.utils.ShardUtils;
+import net.mysterria.silkroad.utils.HuskTownsIntegration;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -48,17 +49,70 @@ public class CaravanManager {
     }
 
     public Caravan createCaravan(String id, String name, Location location, Set<String> territoryChunks) {
+        CaravanCreationResult result = createCaravanWithValidation(id, name, location, territoryChunks);
+        return result.isSuccess() ? result.getCaravan() : null;
+    }
+    
+    /**
+     * Creates a caravan with detailed validation results
+     * @param id Caravan ID
+     * @param name Caravan name
+     * @param location Caravan location
+     * @param territoryChunks Set of territory chunks
+     * @return CaravanCreationResult with details about success/failure
+     */
+    public CaravanCreationResult createCaravanWithValidation(String id, String name, Location location, Set<String> territoryChunks) {
         if (caravans.containsKey(id)) {
-            return null;
+            return CaravanCreationResult.error("A caravan with that name already exists!");
         }
+        
+        // Validate territory chunks with HuskTowns if available
+        HuskTownsIntegration.ValidationResult validation = null;
+        if (territoryChunks != null && !territoryChunks.isEmpty()) {
+            validation = HuskTownsIntegration.validateCaravanTerritory(territoryChunks);
+            
+            if (!validation.isSuccess()) {
+                logger.warning("Failed to create caravan " + id + ": " + validation.getMessage());
+                return CaravanCreationResult.error("§cHuskTowns validation failed: §7" + validation.getMessage());
+            }
+            
+            // Check if town already has a caravan
+            if (validation.getTownId() != -1) {
+                Set<Set<String>> existingCaravanTerritories = caravans.values().stream()
+                        .map(Caravan::getTerritoryChunks)
+                        .collect(java.util.stream.Collectors.toSet());
+                
+                if (HuskTownsIntegration.townHasCaravan(validation.getTownId(), existingCaravanTerritories)) {
+                    logger.warning("Failed to create caravan " + id + ": Town '" + validation.getTownName() + "' already has a caravan");
+                    return CaravanCreationResult.error("§cTown '§d" + validation.getTownName() + "§c' already has a caravan! Each town can only have one caravan.");
+                }
+            }
+            
+            logger.info("Caravan territory validation passed: " + validation.getMessage());
+        }
+        
         Caravan caravan = new Caravan(id, name, location);
         if (territoryChunks != null) {
             caravan.getTerritoryChunks().addAll(territoryChunks);
         }
+        
+        // Set town ownership information if validation was successful
+        if (validation != null && validation.isSuccess() && validation.getTownId() != -1) {
+            caravan.setOwningTownName(validation.getTownName());
+            caravan.setOwningTownId(validation.getTownId());
+            logger.info("Caravan " + id + " assigned to town: " + validation.getTownName() + " (ID: " + validation.getTownId() + ")");
+            
+            // Automatically add all town members to the caravan
+            Set<UUID> townMembers = HuskTownsIntegration.getTownMemberUUIDs(validation.getTownId());
+            for (UUID memberUuid : townMembers) {
+                caravan.addMember(memberUuid);
+            }
+            logger.info("Added " + townMembers.size() + " town members to caravan " + id);
+        }
         caravans.put(id, caravan);
         storage.saveCaravan(caravan);
         logger.info("Created caravan: " + id + " with territory chunks (" + (territoryChunks == null ? 0 : territoryChunks.size()) + ") at " + locationToString(location));
-        return caravan;
+        return CaravanCreationResult.success(caravan);
     }
     
     public boolean removeCaravan(String id) {

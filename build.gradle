@@ -28,7 +28,11 @@ repositories {
     }
 
     maven {
-        url "https://repo.panda-lang.org/releases"
+        url = "https://repo.panda-lang.org/releases"
+    }
+
+    maven {
+        url = 'https://repo.william278.net/releases'
     }
 }
 
@@ -40,6 +44,7 @@ dependencies {
     implementation("dev.rollczi:litecommands-bukkit:3.10.4")
     compileOnly 'org.projectlombok:lombok:1.18.36'
     annotationProcessor 'org.projectlombok:lombok:1.18.36'
+    compileOnly 'net.william278.husktowns:husktowns-bukkit:3.1.4'
 }
 
 def targetJavaVersion = 21
