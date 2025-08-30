@@ -103,11 +103,11 @@ public class CaravanManager {
             logger.info("Caravan " + id + " assigned to town: " + validation.getTownName() + " (ID: " + validation.getTownId() + ")");
             
             // Automatically add all town members to the caravan
-            /*Set<UUID> townMembers = HuskTownsIntegration.getTownMemberUUIDs(validation.getTownId());
+            Set<UUID> townMembers = HuskTownsIntegration.getTownMemberUUIDs(validation.getTownId());
             for (UUID memberUuid : townMembers) {
                 caravan.addMember(memberUuid);
             }
-            logger.info("Added " + townMembers.size() + " town members to caravan " + id);*/
+            logger.info("Added " + townMembers.size() + " town members to caravan " + id);
         }
         caravans.put(id, caravan);
         storage.saveCaravan(caravan);
@@ -515,7 +515,7 @@ public class CaravanManager {
             }
         }
         
-        // Check if player has permission to add items (owner or member)
+        // Check if player has permission to add items (member)
         if (!caravan.hasAccess(player.getUniqueId())) {
             return false;
         }
@@ -549,7 +549,7 @@ public class CaravanManager {
             }
         }
         
-        // Check if player has permission to remove items (owner or member)  
+        // Check if player has permission to remove items (member)  
         if (!caravan.hasAccess(player.getUniqueId())) {
             return false;
         }
@@ -596,7 +596,7 @@ public class CaravanManager {
             }
         }
         
-        // Check if player has permission to add items (owner or member)
+        // Check if player has permission to add items (member)
         if (!caravan.hasAccess(player.getUniqueId())) {
             return false;
         }
@@ -642,7 +642,7 @@ public class CaravanManager {
             }
         }
         
-        // Check if player has permission to remove items (owner or member)  
+        // Check if player has permission to remove items (member)  
         if (!caravan.hasAccess(player.getUniqueId())) {
             return false;
         }
@@ -844,6 +844,7 @@ public class CaravanManager {
         return true;
     }
     
+    @Deprecated
     public boolean claimTransferToCaravan(String transferId, String caravanId, Player player) {
         ResourceTransfer transfer = activeTransfers.get(transferId);
         if (transfer == null || transfer.getStatus() != ResourceTransfer.TransferStatus.DELIVERED) {

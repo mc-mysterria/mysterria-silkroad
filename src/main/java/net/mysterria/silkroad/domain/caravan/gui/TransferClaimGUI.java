@@ -3,12 +3,11 @@ package net.mysterria.silkroad.domain.caravan.gui;
 import dev.triumphteam.gui.builder.item.ItemBuilder;
 import dev.triumphteam.gui.guis.Gui;
 import dev.triumphteam.gui.guis.GuiItem;
-import net.mysterria.silkroad.SilkRoad;
 import net.mysterria.silkroad.domain.caravan.manager.CaravanManager;
-import net.mysterria.silkroad.domain.caravan.model.Caravan;
 import net.mysterria.silkroad.domain.caravan.model.ResourceTransfer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -36,7 +35,7 @@ public class TransferClaimGUI {
         int rows = Math.max(1, Math.min(6, (deliveredTransfers.size() / 9) + 1));
         
         Gui gui = Gui.gui()
-                .title(Component.text("Awaiting Transfers", NamedTextColor.GOLD))
+                .title(Component.text("Awaiting Transfers", NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, false))
                 .rows(rows)
                 .disableAllInteractions()
                 .create();
@@ -45,10 +44,10 @@ public class TransferClaimGUI {
             // Show empty message
             ItemStack emptyItem = new ItemStack(Material.BARRIER);
             ItemMeta emptyMeta = emptyItem.getItemMeta();
-            emptyMeta.displayName(Component.text("No transfers available", NamedTextColor.RED));
+            emptyMeta.displayName(Component.text("No transfers available", NamedTextColor.RED).decoration(TextDecoration.ITALIC, false));
             emptyMeta.lore(List.of(
-                    Component.text("You have no delivered transfers", NamedTextColor.GRAY),
-                    Component.text("to claim at the moment.", NamedTextColor.GRAY)
+                    Component.text("You have no delivered transfers", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                    Component.text("to claim at the moment.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
             ));
             emptyItem.setItemMeta(emptyMeta);
             
@@ -64,7 +63,7 @@ public class TransferClaimGUI {
         // Add close button
         ItemStack closeItem = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         ItemMeta closeMeta = closeItem.getItemMeta();
-        closeMeta.displayName(Component.text("Close", NamedTextColor.RED));
+        closeMeta.displayName(Component.text("Close", NamedTextColor.RED).decoration(TextDecoration.ITALIC, false));
         closeItem.setItemMeta(closeMeta);
         
         gui.setItem(rows * 9 - 1, ItemBuilder.from(closeItem).asGuiItem(event -> {
@@ -83,21 +82,21 @@ public class TransferClaimGUI {
         String destinationCaravan = transfer.getDestinationCaravanId();
         
         meta.displayName(Component.text("Transfer: " + sourceCaravan + " → " + destinationCaravan, 
-                NamedTextColor.YELLOW));
+                NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
         
         List<Component> lore = new ArrayList<>();
-        lore.add(Component.text("Status: Delivered", NamedTextColor.GREEN));
+        lore.add(Component.text("Status: Delivered", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
         lore.add(Component.text("Distance: " + String.format("%.1f", transfer.getDistance()) + " blocks", 
-                NamedTextColor.GRAY));
-        lore.add(Component.text("Cost: " + transfer.getCost() + " shards", NamedTextColor.GRAY));
+                NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+        lore.add(Component.text("Cost: " + transfer.getCost() + " shards", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
         lore.add(Component.empty());
         
         // Show items being transferred using unified method
-        lore.add(Component.text("Items:", NamedTextColor.YELLOW));
+        lore.add(Component.text("Items:", NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
         
         List<ItemStack> allItems = transfer.getAllAsItemStacks();
         if (allItems.isEmpty()) {
-            lore.add(Component.text("  • No items", NamedTextColor.GRAY));
+            lore.add(Component.text("  • No items", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
         } else {
             // Group similar items together for cleaner display
             Map<String, Integer> itemCounts = new HashMap<>();
@@ -107,24 +106,22 @@ public class TransferClaimGUI {
             }
             
             itemCounts.forEach((displayName, amount) -> {
-                lore.add(Component.text("  • " + displayName + " x" + amount, NamedTextColor.WHITE));
+                lore.add(Component.text("  • " + displayName + " x" + amount, NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false));
             });
         }
         
         // Add transfer type indicator
         lore.add(Component.empty());
         if (transfer.isItemStackBased()) {
-            lore.add(Component.text("Transfer Type: ItemStack (NBT preserved)", NamedTextColor.GREEN));
+            lore.add(Component.text("Transfer Type: ItemStack (NBT preserved)", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
         } else if (transfer.isLegacyMaterialBased()) {
-            lore.add(Component.text("Transfer Type: Legacy Material", NamedTextColor.YELLOW));
+            lore.add(Component.text("Transfer Type: Legacy Material", NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
         } else {
-            lore.add(Component.text("Transfer Type: Mixed", NamedTextColor.AQUA));
+            lore.add(Component.text("Transfer Type: Mixed", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false));
         }
         
         lore.add(Component.empty());
-        lore.add(Component.text("Left-click: Claim to inventory", NamedTextColor.GREEN));
-        lore.add(Component.text("Right-click: Claim to caravan", NamedTextColor.AQUA));
-        lore.add(Component.text("(Select destination caravan)", NamedTextColor.GRAY));
+        lore.add(Component.text("Click to claim to inventory", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
         
         meta.lore(lore);
         item.setItemMeta(meta);
@@ -132,92 +129,16 @@ public class TransferClaimGUI {
         return ItemBuilder.from(item).asGuiItem(event -> {
             event.setCancelled(true);
             
-            if (event.isLeftClick()) {
-                // Claim to player inventory
-                if (caravanManager.claimTransferToInventory(transfer.getId(), player)) {
-                    player.sendMessage("§a✓ Transfer successfully claimed to your inventory!");
-                    player.closeInventory();
-                } else {
-                    player.sendMessage("§cFailed to claim transfer to inventory. Check that you have enough space.");
-                }
-            } else if (event.isRightClick()) {
-                // Open caravan selection GUI for claiming to caravan
-                openCaravanSelectionGUI(transfer);
-            }
-        });
-    }
-    
-    private void openCaravanSelectionGUI(ResourceTransfer transfer) {
-        List<Caravan> playerCaravans = caravanManager.getPlayerCaravans(player.getUniqueId());
-        
-        if (playerCaravans.isEmpty()) {
-            player.sendMessage("§cYou don't have access to any caravans to claim this transfer.");
-            return;
-        }
-        
-        int rows = Math.max(1, Math.min(6, (playerCaravans.size() / 9) + 1));
-        
-        Gui gui = Gui.gui()
-                .title(Component.text("Select Destination Caravan", NamedTextColor.GOLD))
-                .rows(rows)
-                .disableAllInteractions()
-                .create();
-        
-        for (int i = 0; i < Math.min(playerCaravans.size(), 45); i++) {
-            Caravan caravan = playerCaravans.get(i);
-            gui.setItem(i, createCaravanSelectionItem(caravan, transfer));
-        }
-        
-        // Add back button
-        ItemStack backItem = new ItemStack(Material.ARROW);
-        ItemMeta backMeta = backItem.getItemMeta();
-        backMeta.displayName(Component.text("Back", NamedTextColor.YELLOW));
-        backItem.setItemMeta(backMeta);
-        
-        gui.setItem(rows * 9 - 1, ItemBuilder.from(backItem).asGuiItem(event -> {
-            event.setCancelled(true);
-            open(); // Return to transfers list
-        }));
-        
-        gui.open(player);
-    }
-    
-    private GuiItem createCaravanSelectionItem(Caravan caravan, ResourceTransfer transfer) {
-        ItemStack item = new ItemStack(Material.MINECART);
-        ItemMeta meta = item.getItemMeta();
-        
-        meta.displayName(Component.text(caravan.getName(), NamedTextColor.YELLOW));
-        
-        List<Component> lore = new ArrayList<>();
-        lore.add(Component.text("ID: " + caravan.getId(), NamedTextColor.GRAY));
-        lore.add(Component.text("Location: " + formatLocation(caravan), NamedTextColor.GRAY));
-        lore.add(Component.text("Inventory: " + caravan.getItemInventory().size() + "/" + 
-                Caravan.MAX_INVENTORY_SLOTS + " slots", NamedTextColor.GRAY));
-        lore.add(Component.empty());
-        lore.add(Component.text("Click to claim transfer here", NamedTextColor.GREEN));
-        
-        meta.lore(lore);
-        item.setItemMeta(meta);
-        
-        return ItemBuilder.from(item).asGuiItem(event -> {
-            event.setCancelled(true);
-            
-            if (caravanManager.claimTransferToCaravan(transfer.getId(), caravan.getId(), player)) {
-                player.sendMessage("§a✓ Transfer successfully claimed to caravan " + caravan.getName() + "!");
+            // Claim to player inventory
+            if (caravanManager.claimTransferToInventory(transfer.getId(), player)) {
+                player.sendMessage("§a✓ Transfer successfully claimed to your inventory!");
                 player.closeInventory();
             } else {
-                player.sendMessage("§cFailed to claim transfer to caravan. Check caravan space and permissions.");
+                player.sendMessage("§cFailed to claim transfer to inventory. Check that you have enough space.");
             }
         });
     }
     
-    private String formatLocation(Caravan caravan) {
-        return String.format("%s (%.0f, %.0f, %.0f)", 
-                caravan.getLocation().getWorld().getName(),
-                caravan.getLocation().getX(),
-                caravan.getLocation().getY(),
-                caravan.getLocation().getZ());
-    }
     
     private String formatTime(long timeMillis) {
         long seconds = TimeUnit.MILLISECONDS.toSeconds(timeMillis);

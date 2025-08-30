@@ -38,7 +38,7 @@ public class ResourceSelectionGUI {
         this.destinationCaravan = destinationCaravan;
         
         this.gui = Gui.paginated()
-                .title(Component.text("Select Resources to Send"))
+                .title(Component.text("Select Resources to Send").decoration(TextDecoration.ITALIC, false))
                 .rows(6)
                 .create();
         
@@ -84,6 +84,7 @@ public class ResourceSelectionGUI {
                             .color(NamedTextColor.GRAY)
                             .decoration(TextDecoration.ITALIC, false))
                     .lore(Component.text("This caravan has no resources to send")
+                            .color(NamedTextColor.GRAY)
                             .decoration(TextDecoration.ITALIC, false))
                     .asGuiItem(event -> event.setCancelled(true));
             
@@ -166,8 +167,8 @@ public class ResourceSelectionGUI {
         
         Material material = hasSelection ? Material.EMERALD : Material.GRAY_DYE;
         Component name = hasSelection ? 
-                Component.text("Confirm Transfer").color(NamedTextColor.GREEN) :
-                Component.text("Select Resources First").color(NamedTextColor.GRAY);
+                Component.text("Confirm Transfer").color(NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false) :
+                Component.text("Select Resources First").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false);
         
         List<Component> lore = new ArrayList<>();
         lore.add(Component.text("Destination: " + destinationCaravan.getName()).decoration(TextDecoration.ITALIC, false));

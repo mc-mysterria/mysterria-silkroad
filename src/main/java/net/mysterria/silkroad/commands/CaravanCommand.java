@@ -152,30 +152,12 @@ public class CaravanCommand {
         sender.sendMessage(sb.toString());
     }
 
-    @Execute(name = "addowner")
-    public void addOwner(@Context CommandSender sender, @Arg("caravan") String caravanId, @Arg("player") String playerName) {
-        if (caravanManager.addOwner(caravanId, playerName)) {
-            sender.sendMessage("§aAdded §d" + playerName + " §aas owner of caravan §d" + caravanId + "§a.");
-        } else {
-            sender.sendMessage("§cFailed to add owner. Check that the caravan exists and the player is online.");
-        }
-    }
-
     @Execute(name = "addmember")
     public void addMember(@Context CommandSender sender, @Arg("caravan") String caravanId, @Arg("player") String playerName) {
         if (caravanManager.addMember(caravanId, playerName)) {
             sender.sendMessage("§aAdded §d" + playerName + " §aas member of caravan §d" + caravanId + "§a.");
         } else {
             sender.sendMessage("§cFailed to add member. Check that the caravan exists and the player is online.");
-        }
-    }
-
-    @Execute(name = "removeowner")
-    public void removeOwner(@Context CommandSender sender, @Arg("caravan") String caravanId, @Arg("player") String playerName) {
-        if (caravanManager.removeOwner(caravanId, playerName)) {
-            sender.sendMessage("§aRemoved §d" + playerName + " §aas owner from caravan §d" + caravanId + "§a.");
-        } else {
-            sender.sendMessage("§cFailed to remove owner. Check that the caravan exists and the player is online.");
         }
     }
 

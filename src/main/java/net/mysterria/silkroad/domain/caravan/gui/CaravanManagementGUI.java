@@ -7,6 +7,7 @@ import net.mysterria.silkroad.domain.caravan.manager.CaravanManager;
 import net.mysterria.silkroad.domain.caravan.model.Caravan;
 import net.mysterria.silkroad.domain.caravan.model.ResourceTransfer;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -29,12 +30,12 @@ public class CaravanManagementGUI {
         List<Caravan> playerCaravans = caravanManager.getPlayerCaravans(player.getUniqueId());
         
         if (playerCaravans.isEmpty()) {
-            player.sendMessage("§cYou are not a member or owner of any caravans.");
+            player.sendMessage("§cYou are not a member of any caravans.");
             return;
         }
         
         Gui gui = Gui.gui()
-                .title(Component.text("Caravan Management"))
+                .title(Component.text("Caravan Management").decoration(TextDecoration.ITALIC, false))
                 .rows(6)
                 .create();
         
@@ -52,13 +53,9 @@ public class CaravanManagementGUI {
             }
             if (slot >= 44) break;
             
-            boolean isOwner = caravan.isOwner(player.getUniqueId());
-            Material material = isOwner ? Material.DIAMOND : Material.EMERALD;
-            
-            GuiItem item = PaperItemBuilder.from(material)
+            GuiItem item = PaperItemBuilder.from(Material.EMERALD)
                     .name(text("§d" + caravan.getName()))
-                    .lore(text("§7Role: " + (isOwner ? "§6Owner" : "§aMember")),
-                          text("§7Location: §f" + formatLocation(caravan.getLocation())),
+                    .lore(text("§7Location: §f" + formatLocation(caravan.getLocation())),
                           text("§7Resources: §f" + caravan.getItemInventory().size() + " items"),
                           text(""),
                           text("§eClick to manage this caravan"))
@@ -121,8 +118,6 @@ public class CaravanManagementGUI {
     }
     
     private void openCaravanDetails(Caravan caravan) {
-        boolean isOwner = caravan.isOwner(player.getUniqueId());
-        
         Gui gui = Gui.gui()
                 .title(text("§6" + caravan.getName() + " Management"))
                 .rows(6)
@@ -132,21 +127,10 @@ public class CaravanManagementGUI {
                 .name(text("§aCaravan Information"))
                 .lore(text("§7Name: §d" + caravan.getName()),
                       text("§7ID: §f" + caravan.getId()),
-                      text("§7Role: " + (isOwner ? "§6Owner" : "§aMember")),
                       text("§7Location: §f" + formatLocation(caravan.getLocation())))
                 .asGuiItem(event -> event.setCancelled(true));
         gui.setItem(4, infoItem);
         
-        GuiItem inventoryItem = PaperItemBuilder.from(Material.CHEST)
-                .name(text("§eCaravan Inventory"))
-                .lore(text("§7View and manage caravan inventory"))
-                .asGuiItem(event -> {
-                    event.setCancelled(true);
-                    openCaravanInventory(caravan);
-                });
-        gui.setItem(20, inventoryItem);
-        
-        // Add inventory management button for members/owners
         GuiItem manageInventoryItem = PaperItemBuilder.from(Material.HOPPER)
                 .name(text("§6Manage Inventory"))
                 .lore(text("§7Deposit and withdraw items"),
@@ -155,19 +139,16 @@ public class CaravanManagementGUI {
                     event.setCancelled(true);
                     openInventoryManagement(caravan);
                 });
-        gui.setItem(24, manageInventoryItem);
+        gui.setItem(23, manageInventoryItem);
         
-        if (isOwner) {
-            GuiItem transferItem = PaperItemBuilder.from(Material.MINECART)
-                    .name(text("§6Send Resources"))
-                    .lore(text("§7Transfer resources to another caravan"),
-                          text("§c§lOwner Only"))
-                    .asGuiItem(event -> {
-                        event.setCancelled(true);
-                        openTransferGUI(caravan);
-                    });
-            gui.setItem(22, transferItem);
-        }
+        GuiItem transferItem = PaperItemBuilder.from(Material.MINECART)
+                .name(text("§6Send Resources"))
+                .lore(text("§7Transfer resources to another caravan"))
+                .asGuiItem(event -> {
+                    event.setCancelled(true);
+                    openTransferGUI(caravan);
+                });
+        gui.setItem(21, transferItem);
         
         GuiItem backItem = PaperItemBuilder.from(Material.ARROW)
                 .name(text("§7← Back"))
@@ -472,6 +453,6 @@ public class CaravanManagementGUI {
     }
     
     private Component text(String legacyText) {
-        return LegacyComponentSerializer.legacySection().deserialize(legacyText);
+        return LegacyComponentSerializer.legacySection().deserialize(legacyText).decoration(TextDecoration.ITALIC, false);
     }
 }

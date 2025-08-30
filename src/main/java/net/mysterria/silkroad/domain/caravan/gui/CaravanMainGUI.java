@@ -26,7 +26,7 @@ public class CaravanMainGUI {
         this.currentCaravan = currentCaravan;
         
         this.gui = Gui.gui()
-                .title(Component.text("Caravan: " + currentCaravan.getName()))
+                .title(Component.text("Caravan: " + currentCaravan.getName()).decoration(TextDecoration.ITALIC, false))
                 .rows(3)
                 .create();
         
@@ -34,15 +34,6 @@ public class CaravanMainGUI {
     }
     
     private void setupGUI() {
-        GuiItem inventoryItem = ItemBuilder.from(Material.CHEST)
-                .name(Component.text("View Inventory").decoration(TextDecoration.ITALIC, false))
-                .lore(createInventoryLore())
-                .asGuiItem(event -> {
-                    event.setCancelled(true);
-                    new CaravanInventoryGUI(caravanManager, player, currentCaravan).open();
-                });
-        gui.setItem(1, 3, inventoryItem);
-        
         GuiItem sendResourcesItem = ItemBuilder.from(Material.MINECART)
                 .name(Component.text("Send Resources").decoration(TextDecoration.ITALIC, false))
                 .lore(
@@ -53,7 +44,7 @@ public class CaravanMainGUI {
                     event.setCancelled(true);
                     new CaravanSelectionGUI(caravanManager, player, currentCaravan).open();
                 });
-        gui.setItem(1, 5, sendResourcesItem);
+        gui.setItem(1, 4, sendResourcesItem);
         
         GuiItem transfersItem = ItemBuilder.from(Material.CLOCK)
                 .name(Component.text("Active Transfers").decoration(TextDecoration.ITALIC, false))
@@ -64,7 +55,7 @@ public class CaravanMainGUI {
                     event.setCancelled(true);
                     new CaravanTransfersGUI(caravanManager, player).open();
                 });
-        gui.setItem(1, 7, transfersItem);
+        gui.setItem(1, 6, transfersItem);
         
         GuiItem infoItem = ItemBuilder.from(Material.BOOK)
                 .name(Component.text("Caravan Info").decoration(TextDecoration.ITALIC, false))
@@ -83,34 +74,6 @@ public class CaravanMainGUI {
         gui.setItem(3, 5, closeItem);
     }
     
-    private List<Component> createInventoryLore() {
-        List<Component> lore = new ArrayList<>();
-        lore.add(Component.text("Current Resources:").decoration(TextDecoration.ITALIC, false));
-        
-        if (currentCaravan.getItemInventory().isEmpty()) {
-            lore.add(Component.text("  No resources stored").decoration(TextDecoration.ITALIC, false));
-        } else {
-            int count = 0;
-            for (org.bukkit.inventory.ItemStack itemStack : currentCaravan.getItemInventory()) {
-                if (count >= 5) {
-                    lore.add(Component.text("  ... and " + (currentCaravan.getItemInventory().size() - 5) + " more")
-                            .decoration(TextDecoration.ITALIC, false));
-                    break;
-                }
-                String itemName = itemStack.hasItemMeta() && itemStack.getItemMeta().hasDisplayName() 
-                        ? itemStack.getItemMeta().getDisplayName() 
-                        : itemStack.getType().name().toLowerCase().replace('_', ' ');
-                lore.add(Component.text("  " + itemName + ": " + itemStack.getAmount())
-                        .decoration(TextDecoration.ITALIC, false));
-                count++;
-            }
-        }
-        
-        lore.add(Component.text(""));
-        lore.add(Component.text("Click to view full inventory").decoration(TextDecoration.ITALIC, false));
-        
-        return lore;
-    }
     
     private List<Component> createInfoLore() {
         List<Component> lore = new ArrayList<>();

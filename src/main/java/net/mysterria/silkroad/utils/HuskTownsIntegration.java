@@ -3,22 +3,16 @@ package net.mysterria.silkroad.utils;
 import net.william278.husktowns.api.HuskTownsAPI;
 import net.william278.husktowns.claim.Position;
 import net.william278.husktowns.claim.TownClaim;
-import net.william278.husktowns.user.OnlineUser;
-import net.william278.husktowns.user.User;
-import net.william278.husktowns.town.Member;
 import net.william278.husktowns.town.Town;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.entity.Player;
 
 import java.util.Optional;
 import java.util.Set;
 import java.util.HashSet;
-import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
 
 /**
@@ -221,7 +215,7 @@ public class HuskTownsIntegration {
      * @param townId The town ID to get members for
      * @return Set of member UUIDs, empty if no members or if HuskTowns unavailable
      */
-    /*public static Set<UUID> getTownMemberUUIDs(int townId) {
+    public static Set<UUID> getTownMemberUUIDs(int townId) {
         Set<UUID> memberUUIDs = new HashSet<>();
         
         if (!isAvailable()) {
@@ -231,20 +225,14 @@ public class HuskTownsIntegration {
         
         try {
             // Get town by ID
-            CompletableFuture<Optional<Town>> townFuture = huskTownsAPI.getTown(townId);
-            Optional<Town> townOptional = townFuture.join();
+            Optional<Town> townOptional = huskTownsAPI.getTown(townId);
             
             if (townOptional.isPresent()) {
                 Town town = townOptional.get();
                 
-                // Get all members of the town
-                CompletableFuture<List<Member>> membersFuture = huskTownsAPI.getTownMembers(town);
-                List<Member> members = membersFuture.join();
-                
-                for (Member member : members) {
-                    memberUUIDs.add(member.user().getUuid());
-                }
-                
+                // Get all members of the town using Town API (HuskTowns 3.1.4)
+                java.util.Map<java.util.UUID, java.lang.Integer> members = town.getMembers();
+                memberUUIDs.addAll(members.keySet());
                 logger.info("Retrieved " + memberUUIDs.size() + " members for town " + town.getName());
             } else {
                 logger.warning("Town with ID " + townId + " not found");
@@ -255,7 +243,7 @@ public class HuskTownsIntegration {
         }
         
         return memberUUIDs;
-    }*/
+    }
     
     /**
      * Result of territory validation
