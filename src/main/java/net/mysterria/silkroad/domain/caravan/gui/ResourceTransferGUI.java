@@ -8,7 +8,9 @@ import net.mysterria.silkroad.config.SilkRoadConfig;
 import net.mysterria.silkroad.domain.caravan.manager.CaravanManager;
 import net.mysterria.silkroad.domain.caravan.model.Caravan;
 import net.mysterria.silkroad.domain.caravan.model.ResourceTransfer;
+import net.mysterria.silkroad.utils.TranslationUtil;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -42,7 +44,7 @@ public class ResourceTransferGUI {
     
     public void open() {
         if (sourceCaravan.getItemInventory().isEmpty()) {
-            player.sendMessage("§cThis caravan has no items to transfer!");
+            player.sendMessage(TranslationUtil.translate("resource.no.items"));
             return;
         }
         
@@ -66,35 +68,35 @@ public class ResourceTransferGUI {
             ItemStack displayItem = itemStack.clone();
             displayItem.setAmount(Math.min(available, 64));
             
-            List<String> lore = new ArrayList<>();
-            lore.add("§7Available: §e" + available);
-            lore.add("§7Selected: " + (selected > 0 ? "§a" + selected : "§70"));
+            List<Component> lore = new ArrayList<>();
+            lore.add(TranslationUtil.translatable("gui.available.amount", String.valueOf(available)).color(NamedTextColor.GRAY));
+            lore.add(TranslationUtil.translatable("gui.selected.amount", String.valueOf(selected > 0 ? selected : 0)).color(NamedTextColor.GRAY));
             
             // Show NBT preservation info
             if (itemStack.hasItemMeta()) {
-                lore.add("");
-                lore.add("§a✓ NBT Data Preserved:");
+                lore.add(Component.empty());
+                lore.add(TranslationUtil.translatable("gui.nbt.preserved").color(NamedTextColor.GREEN));
                 if (itemStack.getItemMeta().hasDisplayName()) {
-                    lore.add("  §b• Custom Name");
+                    lore.add(TranslationUtil.translatable("gui.nbt.custom.name").color(NamedTextColor.AQUA));
                 }
                 if (itemStack.getItemMeta().hasLore()) {
-                    lore.add("  §b• Custom Lore");
+                    lore.add(TranslationUtil.translatable("gui.nbt.custom.lore").color(NamedTextColor.AQUA));
                 }
                 if (itemStack.getItemMeta().hasEnchants()) {
-                    lore.add("  §d• Enchantments");
+                    lore.add(TranslationUtil.translatable("gui.nbt.enchantments").color(NamedTextColor.LIGHT_PURPLE));
                 }
             }
             
-            lore.add("");
-            lore.add("§eLeft-click: +1");
-            lore.add("§eShift Left-click: +10");
-            lore.add("§eRight-click: -1");
-            lore.add("§eShift Right-click: -10");
-            lore.add("§eMiddle-click: Select all");
+            lore.add(Component.empty());
+            lore.add(TranslationUtil.translatable("gui.click.instructions.left").color(NamedTextColor.YELLOW));
+            lore.add(TranslationUtil.translatable("gui.click.instructions.shift.left").color(NamedTextColor.YELLOW));
+            lore.add(TranslationUtil.translatable("gui.click.instructions.right").color(NamedTextColor.YELLOW));
+            lore.add(TranslationUtil.translatable("gui.click.instructions.shift.right").color(NamedTextColor.YELLOW));
+            lore.add(TranslationUtil.translatable("gui.click.instructions.middle").color(NamedTextColor.YELLOW));
             
             GuiItem item = PaperItemBuilder.from(displayItem)
-                    .name(text((selected > 0 ? "§a" : "§f") + itemName))
-                    .lore(lore.stream().map(this::text).toArray(Component[]::new))
+                    .name(Component.text(itemName).color(selected > 0 ? NamedTextColor.GREEN : NamedTextColor.WHITE))
+                    .lore(lore.toArray(Component[]::new))
                     .asGuiItem(event -> {
                         event.setCancelled(true);
                         handleItemClick(itemStack, available, event.getClick());
@@ -107,21 +109,21 @@ public class ResourceTransferGUI {
         
         if (sourceCaravan.getItemInventory().isEmpty()) {
             GuiItem emptyItem = PaperItemBuilder.from(Material.BARRIER)
-                    .name(text("§7No Items"))
-                    .lore(text("§7This caravan has no items to transfer"))
+                    .name(TranslationUtil.translatable("gui.no.items.title").color(NamedTextColor.GRAY))
+                    .lore(TranslationUtil.translatable("gui.no.items.description").color(NamedTextColor.GRAY))
                     .asGuiItem(event -> event.setCancelled(true));
             gui.setItem(22, emptyItem);
         }
         
         GuiItem infoItem = PaperItemBuilder.from(Material.PAPER)
-                .name(text("§aTransfer Information"))
-                .lore(createTransferInfo().stream().map(this::text).toArray(Component[]::new))
+                .name(TranslationUtil.translatable("gui.transfer.information.title").color(NamedTextColor.GREEN))
+                .lore(createTransferInfo().toArray(Component[]::new))
                 .asGuiItem(event -> event.setCancelled(true));
         gui.setItem(40, infoItem);
         
         GuiItem confirmItem = PaperItemBuilder.from(Material.GREEN_WOOL)
-                .name(text("§aConfirm Transfer"))
-                .lore(text("§7Click to execute the transfer"))
+                .name(TranslationUtil.translatable("gui.transfer.confirm.title").color(NamedTextColor.GREEN))
+                .lore(TranslationUtil.translatable("gui.transfer.confirm.click").color(NamedTextColor.GRAY))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     executeTransfer();
@@ -129,8 +131,8 @@ public class ResourceTransferGUI {
         gui.setItem(42, confirmItem);
         
         GuiItem clearItem = PaperItemBuilder.from(Material.YELLOW_WOOL)
-                .name(text("§eClear Selection"))
-                .lore(text("§7Click to clear all selected resources"))
+                .name(TranslationUtil.translatable("gui.clear.selection.title").color(NamedTextColor.YELLOW))
+                .lore(TranslationUtil.translatable("gui.clear.selection.click").color(NamedTextColor.GRAY))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     selectedItems.clear();
@@ -253,16 +255,16 @@ public class ResourceTransferGUI {
         return result.toString().trim();
     }
     
-    private List<String> createTransferInfo() {
-        List<String> info = new ArrayList<>();
-        info.add("§7From: §d" + sourceCaravan.getName());
-        info.add("§7To: §d" + destinationCaravan.getName());
+    private List<Component> createTransferInfo() {
+        List<Component> info = new ArrayList<>();
+        info.add(TranslationUtil.translatable("gui.transfer.from.caravan", sourceCaravan.getName()).color(NamedTextColor.GRAY));
+        info.add(TranslationUtil.translatable("gui.transfer.to.caravan", destinationCaravan.getName()).color(NamedTextColor.GRAY));
         
         double distance = sourceCaravan.distanceTo(destinationCaravan);
         if (distance == Double.MAX_VALUE) {
-            info.add("§7Distance: §cDifferent World");
+            info.add(TranslationUtil.translatable("gui.transfer.distance.different.world").color(NamedTextColor.GRAY));
         } else {
-            info.add("§7Distance: §f" + String.format("%.1f blocks", distance));
+            info.add(TranslationUtil.translatable("gui.transfer.distance.blocks.format", String.format("%.1f", distance)).color(NamedTextColor.GRAY));
         }
         
         if (!selectedItems.isEmpty()) {
@@ -270,19 +272,19 @@ public class ResourceTransferGUI {
             int estimatedCost = calculateItemTransferCost(distance, selectedItems);
             long estimatedTime = calculateDeliveryTime(distance);
             
-            info.add("§7Items: §e" + totalItems);
-            info.add("§7Est. Cost: §6" + estimatedCost + " shards");
-            info.add("§7Est. Time: §f" + formatTime(estimatedTime));
-            info.add("§a§lNBT Data Preserved!");
-            info.add("");
-            info.add("§7Selected Items:");
+            info.add(TranslationUtil.translatable("gui.transfer.items.count", String.valueOf(totalItems)).color(NamedTextColor.GRAY));
+            info.add(TranslationUtil.translatable("gui.transfer.estimated.cost", String.valueOf(estimatedCost)).color(NamedTextColor.GRAY));
+            info.add(TranslationUtil.translatable("gui.transfer.estimated.time", formatTime(estimatedTime)).color(NamedTextColor.GRAY));
+            info.add(TranslationUtil.translatable("gui.transfer.nbt.data.preserved").color(NamedTextColor.GREEN));
+            info.add(Component.empty());
+            info.add(TranslationUtil.translatable("gui.transfer.selected.items.header").color(NamedTextColor.GRAY));
             for (ItemStack item : selectedItems) {
                 int amount = selectionAmounts.get(item);
                 String itemName = getItemDisplayName(item);
-                info.add("  §8- §f" + amount + "x " + itemName);
+                info.add(TranslationUtil.translatable("gui.transfer.selected.item.format", String.valueOf(amount), itemName).color(NamedTextColor.WHITE));
             }
         } else {
-            info.add("§7No items selected");
+            info.add(TranslationUtil.translatable("gui.transfer.no.items.selected").color(NamedTextColor.GRAY));
         }
         
         return info;
@@ -290,7 +292,7 @@ public class ResourceTransferGUI {
     
     private void executeTransfer() {
         if (selectedItems.isEmpty()) {
-            player.sendMessage("§cNo items selected for transfer!");
+            player.sendMessage(TranslationUtil.translatable("gui.transfer.no.selection.error").color(NamedTextColor.RED));
             return;
         }
         
@@ -311,15 +313,15 @@ public class ResourceTransferGUI {
         );
         
         if (transfer != null) {
-            player.sendMessage("§a✓ Transfer created successfully!");
-            player.sendMessage("§7Transfer ID: §f" + transfer.getId().substring(0, 8));
-            player.sendMessage("§7Items: §e" + itemsToTransfer.size() + " §7different types");
-            player.sendMessage("§7Cost: §6" + transfer.getCost() + " shards");
-            player.sendMessage("§7Delivery time: §f" + formatTime(transfer.getRemainingTime()));
-            player.sendMessage("§a✓ All NBT data (enchantments, names, lore) has been preserved!");
+            player.sendMessage(TranslationUtil.translatable("gui.transfer.success.message").color(NamedTextColor.GREEN));
+            player.sendMessage(TranslationUtil.translatable("gui.transfer.success.id", transfer.getId().substring(0, 8)).color(NamedTextColor.GRAY));
+            player.sendMessage(TranslationUtil.translatable("gui.transfer.success.items", String.valueOf(itemsToTransfer.size())).color(NamedTextColor.GRAY));
+            player.sendMessage(TranslationUtil.translatable("gui.transfer.success.cost", String.valueOf(transfer.getCost())).color(NamedTextColor.GRAY));
+            player.sendMessage(TranslationUtil.translatable("gui.transfer.success.delivery.time", formatTime(transfer.getRemainingTime())).color(NamedTextColor.GRAY));
+            player.sendMessage(TranslationUtil.translatable("gui.transfer.success.nbt.preserved").color(NamedTextColor.GREEN));
             player.closeInventory();
         } else {
-            player.sendMessage("§cTransfer failed! Check that you have enough shards and the caravan has enough items.");
+            player.sendMessage(TranslationUtil.translatable("gui.transfer.failed.message").color(NamedTextColor.RED));
         }
     }
     
@@ -344,18 +346,18 @@ public class ResourceTransferGUI {
     }
     
     private String formatTime(long millis) {
-        if (millis <= 0) return "Ready!";
+        if (millis <= 0) return TranslationUtil.translate("time.ready");
         
         long seconds = millis / 1000;
         long minutes = seconds / 60;
         long hours = minutes / 60;
         
         if (hours > 0) {
-            return String.format("%dh %dm", hours, minutes % 60);
+            return TranslationUtil.translate("time.format.hours.minutes", String.valueOf(hours), String.valueOf(minutes % 60));
         } else if (minutes > 0) {
-            return String.format("%dm %ds", minutes, seconds % 60);
+            return TranslationUtil.translate("time.format.minutes.seconds", String.valueOf(minutes), String.valueOf(seconds % 60));
         } else {
-            return String.format("%ds", seconds);
+            return TranslationUtil.translate("time.format.seconds", String.valueOf(seconds));
         }
     }
     
@@ -425,7 +427,7 @@ public class ResourceTransferGUI {
         // Transfer information panel
         GuiItem infoItem = PaperItemBuilder.from(Material.PAPER)
                 .name(text("§6Transfer Details"))
-                .lore(createTransferInfo().stream().map(this::text).toArray(Component[]::new))
+                .lore(createTransferInfo().toArray(Component[]::new))
                 .asGuiItem(event -> event.setCancelled(true));
         gui.setItem(40, infoItem);
         

@@ -9,6 +9,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.mysterria.silkroad.domain.caravan.manager.CaravanManager;
 import net.mysterria.silkroad.domain.caravan.model.Caravan;
+import net.mysterria.silkroad.utils.TranslationUtil;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 
@@ -29,7 +30,7 @@ public class CaravanSelectionGUI {
         this.sourceCaravan = sourceCaravan;
         
         this.gui = Gui.paginated()
-                .title(Component.text("Select Destination Caravan"))
+                .title(TranslationUtil.translatable("gui.select.destination"))
                 .rows(6)
                 .create();
         
@@ -39,7 +40,7 @@ public class CaravanSelectionGUI {
     
     private void setupNavigationItems() {
         GuiItem prevItem = ItemBuilder.from(Material.ARROW)
-                .name(Component.text("Previous Page").decoration(TextDecoration.ITALIC, false))
+                .name(TranslationUtil.translatable("gui.previous.page").decoration(TextDecoration.ITALIC, false))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     gui.previous();
@@ -47,7 +48,7 @@ public class CaravanSelectionGUI {
         gui.setItem(6, 3, prevItem);
         
         GuiItem nextItem = ItemBuilder.from(Material.ARROW)
-                .name(Component.text("Next Page").decoration(TextDecoration.ITALIC, false))
+                .name(TranslationUtil.translatable("gui.next.page").decoration(TextDecoration.ITALIC, false))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     gui.next();
@@ -55,7 +56,7 @@ public class CaravanSelectionGUI {
         gui.setItem(6, 7, nextItem);
         
         GuiItem backItem = ItemBuilder.from(Material.BARRIER)
-                .name(Component.text("Back").decoration(TextDecoration.ITALIC, false))
+                .name(TranslationUtil.translatable("gui.back").decoration(TextDecoration.ITALIC, false))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     new CaravanMainGUI(caravanManager, player, sourceCaravan).open();
@@ -78,35 +79,37 @@ public class CaravanSelectionGUI {
             Material iconMaterial = getCaravanIcon(caravan);
             
             List<Component> lore = new ArrayList<>();
-            lore.add(Component.text("Name: " + caravan.getName()).decoration(TextDecoration.ITALIC, false));
-            lore.add(Component.text("Distance: " + String.format("%.1f blocks", distance))
+            lore.add(TranslationUtil.translatable("gui.caravan.name", caravan.getName()).decoration(TextDecoration.ITALIC, false));
+            lore.add(TranslationUtil.translatable("item.distance", String.format("%.1f", distance))
                     .decoration(TextDecoration.ITALIC, false));
-            lore.add(Component.text("Estimated Time: " + formatTime(estimatedDeliveryTime))
+            lore.add(TranslationUtil.translatable("gui.estimated.time", formatTime(estimatedDeliveryTime))
                     .decoration(TextDecoration.ITALIC, false));
-            lore.add(Component.text("Base Cost: " + baseCost + " (+ item cost)")
+            lore.add(TranslationUtil.translatable("gui.base.cost", String.valueOf(baseCost))
                     .decoration(TextDecoration.ITALIC, false));
-            lore.add(Component.text(""));
+            lore.add(Component.empty());
             
             if (distance > 10000) {
-                lore.add(Component.text("⚠ Very Long Distance!")
+                lore.add(TranslationUtil.translatable("distance.very.long")
                         .color(NamedTextColor.RED)
                         .decoration(TextDecoration.ITALIC, false));
             } else if (distance > 5000) {
-                lore.add(Component.text("⚠ Long Distance")
+                lore.add(TranslationUtil.translatable("distance.long")
                         .color(NamedTextColor.YELLOW)
                         .decoration(TextDecoration.ITALIC, false));
             } else {
-                lore.add(Component.text("✓ Reasonable Distance")
+                lore.add(TranslationUtil.translatable("distance.reasonable")
                         .color(NamedTextColor.GREEN)
                         .decoration(TextDecoration.ITALIC, false));
             }
             
-            lore.add(Component.text(""));
-            lore.add(Component.text("Click to select resources to send")
+            lore.add(Component.empty());
+            lore.add(TranslationUtil.translatable("gui.click.select.resources")
                     .decoration(TextDecoration.ITALIC, false));
             
             GuiItem item = ItemBuilder.from(iconMaterial)
-                    .name(Component.text(caravan.getName()).decoration(TextDecoration.ITALIC, false))
+                    .name(Component.text(caravan.getName())
+                            .color(NamedTextColor.WHITE)
+                            .decoration(TextDecoration.ITALIC, false))
                     .lore(lore)
                     .asGuiItem(event -> {
                         event.setCancelled(true);
@@ -118,10 +121,10 @@ public class CaravanSelectionGUI {
         
         if (allCaravans.size() <= 1) {
             GuiItem noCaravansItem = ItemBuilder.from(Material.GRAY_STAINED_GLASS_PANE)
-                    .name(Component.text("No Other Caravans Available")
+                    .name(TranslationUtil.translatable("gui.no.other.caravans")
                             .color(NamedTextColor.GRAY)
                             .decoration(TextDecoration.ITALIC, false))
-                    .lore(Component.text("There are no other caravans to send resources to")
+                    .lore(TranslationUtil.translatable("gui.no.other.caravans.description")
                             .decoration(TextDecoration.ITALIC, false))
                     .asGuiItem(event -> event.setCancelled(true));
             
@@ -154,11 +157,11 @@ public class CaravanSelectionGUI {
         long hours = minutes / 60;
         
         if (hours > 0) {
-            return String.format("%dh %dm", hours, minutes % 60);
+            return TranslationUtil.translate("time.format.hours.minutes", String.valueOf(hours), String.valueOf(minutes % 60));
         } else if (minutes > 0) {
-            return String.format("%dm %ds", minutes, seconds % 60);
+            return TranslationUtil.translate("time.format.minutes.seconds", String.valueOf(minutes), String.valueOf(seconds % 60));
         } else {
-            return String.format("%ds", seconds);
+            return TranslationUtil.translate("time.format.seconds", String.valueOf(seconds));
         }
     }
     

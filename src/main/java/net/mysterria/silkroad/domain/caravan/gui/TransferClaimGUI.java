@@ -5,6 +5,7 @@ import dev.triumphteam.gui.guis.Gui;
 import dev.triumphteam.gui.guis.GuiItem;
 import net.mysterria.silkroad.domain.caravan.manager.CaravanManager;
 import net.mysterria.silkroad.domain.caravan.model.ResourceTransfer;
+import net.mysterria.silkroad.utils.TranslationUtil;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -35,7 +36,7 @@ public class TransferClaimGUI {
         int rows = Math.max(1, Math.min(6, (deliveredTransfers.size() / 9) + 1));
         
         Gui gui = Gui.gui()
-                .title(Component.text("Awaiting Transfers", NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, false))
+                .title(TranslationUtil.translatable("gui.awaiting.transfers", NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, false))
                 .rows(rows)
                 .disableAllInteractions()
                 .create();
@@ -44,10 +45,10 @@ public class TransferClaimGUI {
             // Show empty message
             ItemStack emptyItem = new ItemStack(Material.BARRIER);
             ItemMeta emptyMeta = emptyItem.getItemMeta();
-            emptyMeta.displayName(Component.text("No transfers available", NamedTextColor.RED).decoration(TextDecoration.ITALIC, false));
+            emptyMeta.displayName(TranslationUtil.translatable("gui.no.transfers.available", NamedTextColor.RED).decoration(TextDecoration.ITALIC, false));
             emptyMeta.lore(List.of(
-                    Component.text("You have no delivered transfers", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
-                    Component.text("to claim at the moment.", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+                    TranslationUtil.translatable("gui.delivered.transfers.none1", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                    TranslationUtil.translatable("gui.delivered.transfers.none2", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
             ));
             emptyItem.setItemMeta(emptyMeta);
             
@@ -63,7 +64,7 @@ public class TransferClaimGUI {
         // Add close button
         ItemStack closeItem = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         ItemMeta closeMeta = closeItem.getItemMeta();
-        closeMeta.displayName(Component.text("Close", NamedTextColor.RED).decoration(TextDecoration.ITALIC, false));
+        closeMeta.displayName(TranslationUtil.translatable("gui.close", NamedTextColor.RED).decoration(TextDecoration.ITALIC, false));
         closeItem.setItemMeta(closeMeta);
         
         gui.setItem(rows * 9 - 1, ItemBuilder.from(closeItem).asGuiItem(event -> {
@@ -81,22 +82,22 @@ public class TransferClaimGUI {
         String sourceCaravan = transfer.getSourceCaravanId();
         String destinationCaravan = transfer.getDestinationCaravanId();
         
-        meta.displayName(Component.text("Transfer: " + sourceCaravan + " → " + destinationCaravan, 
-                NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
+        meta.displayName(TranslationUtil.translatable("gui.transfer.title", NamedTextColor.YELLOW, sourceCaravan, destinationCaravan)
+                .decoration(TextDecoration.ITALIC, false));
         
         List<Component> lore = new ArrayList<>();
-        lore.add(Component.text("Status: Delivered", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
-        lore.add(Component.text("Distance: " + String.format("%.1f", transfer.getDistance()) + " blocks", 
-                NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
-        lore.add(Component.text("Cost: " + transfer.getCost() + " shards", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+        lore.add(TranslationUtil.translatable("gui.status.delivered", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
+        lore.add(TranslationUtil.translatable("item.distance", NamedTextColor.GRAY, String.format("%.1f", transfer.getDistance()))
+                .decoration(TextDecoration.ITALIC, false));
+        lore.add(TranslationUtil.translatable("gui.cost", NamedTextColor.GRAY, transfer.getCost()).decoration(TextDecoration.ITALIC, false));
         lore.add(Component.empty());
         
         // Show items being transferred using unified method
-        lore.add(Component.text("Items:", NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
+        lore.add(TranslationUtil.translatable("gui.items", NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
         
         List<ItemStack> allItems = transfer.getAllAsItemStacks();
         if (allItems.isEmpty()) {
-            lore.add(Component.text("  • No items", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            lore.add(TranslationUtil.translatable("gui.items.none", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
         } else {
             // Group similar items together for cleaner display
             Map<String, Integer> itemCounts = new HashMap<>();
@@ -106,22 +107,22 @@ public class TransferClaimGUI {
             }
             
             itemCounts.forEach((displayName, amount) -> {
-                lore.add(Component.text("  • " + displayName + " x" + amount, NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false));
+                lore.add(TranslationUtil.translatable("gui.item.quantity", displayName, amount).color(NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false));
             });
         }
         
         // Add transfer type indicator
         lore.add(Component.empty());
         if (transfer.isItemStackBased()) {
-            lore.add(Component.text("Transfer Type: ItemStack (NBT preserved)", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
+            lore.add(TranslationUtil.translatable("gui.transfer.type.itemstack", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
         } else if (transfer.isLegacyMaterialBased()) {
-            lore.add(Component.text("Transfer Type: Legacy Material", NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
+            lore.add(TranslationUtil.translatable("gui.transfer.type.legacy", NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
         } else {
-            lore.add(Component.text("Transfer Type: Mixed", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false));
+            lore.add(TranslationUtil.translatable("gui.transfer.type.mixed", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false));
         }
         
         lore.add(Component.empty());
-        lore.add(Component.text("Click to claim to inventory", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
+        lore.add(TranslationUtil.translatable("gui.click.claim.inventory", NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
         
         meta.lore(lore);
         item.setItemMeta(meta);
@@ -131,10 +132,10 @@ public class TransferClaimGUI {
             
             // Claim to player inventory
             if (caravanManager.claimTransferToInventory(transfer.getId(), player)) {
-                player.sendMessage("§a✓ Transfer successfully claimed to your inventory!");
+                player.sendMessage(TranslationUtil.translatable("transfer.claim.success", NamedTextColor.GREEN));
                 player.closeInventory();
             } else {
-                player.sendMessage("§cFailed to claim transfer to inventory. Check that you have enough space.");
+                player.sendMessage(TranslationUtil.translatable("transfer.claim.failed", NamedTextColor.RED));
             }
         });
     }

@@ -3,6 +3,8 @@ package net.mysterria.silkroad.listeners;
 import net.mysterria.silkroad.domain.caravan.gui.CaravanMainGUI;
 import net.mysterria.silkroad.domain.caravan.manager.CaravanManager;
 import net.mysterria.silkroad.domain.caravan.model.Caravan;
+import net.mysterria.silkroad.utils.TranslationUtil;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -49,7 +51,7 @@ public class CaravanInteractionListener implements Listener {
         if (event.getAction().isRightClick()) {
             new CaravanMainGUI(caravanManager, player, caravan).open();
         } else {
-            player.sendMessage("§7Caravan: §d" + caravan.getName() + " §7| Right-click while sneaking to open interface");
+            player.sendMessage(TranslationUtil.translatable("caravan.interaction.info", NamedTextColor.GRAY, caravan.getName()));
         }
     }
 }

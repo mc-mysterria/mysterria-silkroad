@@ -1,6 +1,10 @@
 package net.mysterria.silkroad.listeners;
 
 import net.mysterria.silkroad.domain.caravan.manager.CaravanManager;
+import net.mysterria.silkroad.utils.TranslationUtil;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -34,7 +38,7 @@ public class CaravanWandListener implements Listener {
         }
         
         if (!player.hasPermission("silkroad.caravan.admin")) {
-            player.sendMessage("§cYou don't have permission to use the caravan wand!");
+            player.sendMessage(TranslationUtil.translatable("wand.permission.denied", NamedTextColor.RED));
             event.setCancelled(true);
             return;
         }
@@ -75,31 +79,31 @@ public class CaravanWandListener implements Listener {
         int count = caravanManager.getSelection(player.getUniqueId()).size();
         if (add) {
             if (changed) {
-                player.sendMessage("§aSelected chunk §e" + worldName + ":" + cx + ":" + cz + "§a. Total selected: §d" + count);
+                player.sendMessage(TranslationUtil.translatable("wand.chunk.selected", NamedTextColor.GREEN, worldName, cx, cz, count));
             } else {
-                player.sendMessage("§eChunk already selected §7(" + worldName + ":" + cx + ":" + cz + ")§e. Total: §d" + count);
+                player.sendMessage(TranslationUtil.translatable("wand.chunk.already.selected", NamedTextColor.YELLOW, worldName, cx, cz, count));
             }
         } else {
             if (changed) {
-                player.sendMessage("§cDeselected chunk §e" + worldName + ":" + cx + ":" + cz + "§c. Total selected: §d" + count);
+                player.sendMessage(TranslationUtil.translatable("wand.chunk.deselected", NamedTextColor.RED, worldName, cx, cz, count));
             } else {
-                player.sendMessage("§eChunk was not selected §7(" + worldName + ":" + cx + ":" + cz + ")§e. Total: §d" + count);
+                player.sendMessage(TranslationUtil.translatable("wand.chunk.not.selected", NamedTextColor.YELLOW, worldName, cx, cz, count));
             }
         }
-        player.sendActionBar("§6Selection: §e" + count + " §7chunk(s)");
+        player.sendActionBar(Component.text("Selection: " + count + " chunk(s)", NamedTextColor.GOLD));
     }
     
     private void handleClearAllSelections(Player player) {
         int previousCount = caravanManager.getSelection(player.getUniqueId()).size();
         
         if (previousCount == 0) {
-            player.sendMessage("§7No chunks selected to clear.");
-            player.sendActionBar("§6Selection: §e0 §7chunk(s)");
+            player.sendMessage(TranslationUtil.translatable("wand.no.chunks.to.clear", NamedTextColor.GRAY));
+            player.sendActionBar(Component.text("Selection: 0 chunks", NamedTextColor.GOLD));
             return;
         }
         
         caravanManager.clearSelection(player.getUniqueId());
-        player.sendMessage("§c✖ Cleared all selections! §7(" + previousCount + " chunk" + (previousCount == 1 ? "" : "s") + " deselected)");
-        player.sendActionBar("§6Selection: §e0 §7chunk(s)");
+        player.sendMessage(TranslationUtil.translatable("wand.cleared.selections", NamedTextColor.RED, previousCount, (previousCount == 1 ? "" : "s")));
+        player.sendActionBar(Component.text("Selection: 0 chunks", NamedTextColor.GOLD));
     }
 }

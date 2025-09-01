@@ -9,6 +9,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.mysterria.silkroad.domain.caravan.manager.CaravanManager;
 import net.mysterria.silkroad.domain.caravan.model.ResourceTransfer;
+import net.mysterria.silkroad.utils.TranslationUtil;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 
@@ -26,7 +27,7 @@ public class CaravanTransfersGUI {
         this.player = player;
         
         this.gui = Gui.paginated()
-                .title(Component.text("Your Active Transfers"))
+                .title(TranslationUtil.translatable("gui.transfers.title"))
                 .rows(6)
                 .create();
         
@@ -36,7 +37,7 @@ public class CaravanTransfersGUI {
     
     private void setupNavigationItems() {
         GuiItem prevItem = ItemBuilder.from(Material.ARROW)
-                .name(Component.text("Previous Page").decoration(TextDecoration.ITALIC, false))
+                .name(TranslationUtil.translatable("gui.previous.page").decoration(TextDecoration.ITALIC, false))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     gui.previous();
@@ -44,7 +45,7 @@ public class CaravanTransfersGUI {
         gui.setItem(6, 3, prevItem);
         
         GuiItem nextItem = ItemBuilder.from(Material.ARROW)
-                .name(Component.text("Next Page").decoration(TextDecoration.ITALIC, false))
+                .name(TranslationUtil.translatable("gui.next.page").decoration(TextDecoration.ITALIC, false))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     gui.next();
@@ -52,7 +53,7 @@ public class CaravanTransfersGUI {
         gui.setItem(6, 7, nextItem);
         
         GuiItem closeItem = ItemBuilder.from(Material.BARRIER)
-                .name(Component.text("Close").decoration(TextDecoration.ITALIC, false))
+                .name(TranslationUtil.translatable("gui.close").decoration(TextDecoration.ITALIC, false))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     player.closeInventory();
@@ -65,10 +66,10 @@ public class CaravanTransfersGUI {
         
         if (transfers.isEmpty()) {
             GuiItem emptyItem = ItemBuilder.from(Material.GRAY_STAINED_GLASS_PANE)
-                    .name(Component.text("No Active Transfers")
+                    .name(TranslationUtil.translatable("gui.no.active.transfers")
                             .color(NamedTextColor.GRAY)
                             .decoration(TextDecoration.ITALIC, false))
-                    .lore(Component.text("You have no ongoing deliveries")
+                    .lore(TranslationUtil.translatable("gui.no.transfers.description")
                             .decoration(TextDecoration.ITALIC, false))
                     .asGuiItem(event -> event.setCancelled(true));
             
@@ -82,51 +83,48 @@ public class CaravanTransfersGUI {
             String timeRemaining = formatTime(transfer.getRemainingTime());
             
             List<Component> lore = new ArrayList<>();
-            lore.add(Component.text("From: " + transfer.getSourceCaravanId()).decoration(TextDecoration.ITALIC, false));
-            lore.add(Component.text("To: " + transfer.getDestinationCaravanId()).decoration(TextDecoration.ITALIC, false));
-            lore.add(Component.text("Status: " + transfer.getStatus().name())
-                    .color(statusColor)
+            lore.add(TranslationUtil.translatable("transfer.from", NamedTextColor.WHITE, transfer.getSourceCaravanId()).decoration(TextDecoration.ITALIC, false));
+            lore.add(TranslationUtil.translatable("transfer.to", NamedTextColor.WHITE, transfer.getDestinationCaravanId()).decoration(TextDecoration.ITALIC, false));
+            lore.add(TranslationUtil.translatable("transfer.status", statusColor, transfer.getStatus().name())
                     .decoration(TextDecoration.ITALIC, false));
-            lore.add(Component.text(""));
+            lore.add(Component.empty());
             
             if (transfer.getStatus() == ResourceTransfer.TransferStatus.IN_TRANSIT) {
                 if (transfer.getRemainingTime() > 0) {
-                    lore.add(Component.text("Time Remaining: " + timeRemaining)
-                            .color(NamedTextColor.YELLOW)
+                    lore.add(TranslationUtil.translatable("transfer.time.remaining", NamedTextColor.YELLOW, timeRemaining)
                             .decoration(TextDecoration.ITALIC, false));
                 } else {
-                    lore.add(Component.text("Ready for Delivery!")
+                    lore.add(TranslationUtil.translatable("transfer.ready.delivery")
                             .color(NamedTextColor.GREEN)
                             .decoration(TextDecoration.ITALIC, false));
                 }
             } else if (transfer.getStatus() == ResourceTransfer.TransferStatus.DELIVERED) {
-                lore.add(Component.text("Delivered Successfully!")
+                lore.add(TranslationUtil.translatable("transfer.delivered.success")
                         .color(NamedTextColor.GREEN)
                         .decoration(TextDecoration.ITALIC, false));
             } else if (transfer.getStatus() == ResourceTransfer.TransferStatus.FAILED) {
-                lore.add(Component.text("Transfer Failed")
+                lore.add(TranslationUtil.translatable("transfer.failed")
                         .color(NamedTextColor.RED)
                         .decoration(TextDecoration.ITALIC, false));
             }
             
-            lore.add(Component.text(""));
-            lore.add(Component.text("Resources:").decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.empty());
+            lore.add(TranslationUtil.translatable("transfer.resources").decoration(TextDecoration.ITALIC, false));
             
             int resourceCount = 0;
             for (var entry : transfer.getResources().entrySet()) {
                 if (resourceCount >= 3) {
-                    lore.add(Component.text("  ... and " + (transfer.getResources().size() - 3) + " more")
+                    lore.add(TranslationUtil.translatable("transfer.more.resources", NamedTextColor.WHITE, (transfer.getResources().size() - 3))
                             .decoration(TextDecoration.ITALIC, false));
                     break;
                 }
-                lore.add(Component.text("  " + entry.getKey().name() + ": " + entry.getValue())
+                lore.add(TranslationUtil.translatable("gui.resource.quantity", entry.getKey().name(), entry.getValue())
                         .decoration(TextDecoration.ITALIC, false));
                 resourceCount++;
             }
             
             GuiItem item = ItemBuilder.from(iconMaterial)
-                    .name(Component.text("Transfer #" + transfer.getId().substring(0, 8) + "...")
-                            .color(statusColor)
+                    .name(TranslationUtil.translatable("transfer.id.short", statusColor, transfer.getId().substring(0, 8))
                             .decoration(TextDecoration.ITALIC, false))
                     .lore(lore)
                     .asGuiItem(event -> event.setCancelled(true));
@@ -154,18 +152,18 @@ public class CaravanTransfersGUI {
     }
     
     private String formatTime(long millis) {
-        if (millis <= 0) return "Ready!";
+        if (millis <= 0) return TranslationUtil.translate("time.ready");
         
         long seconds = millis / 1000;
         long minutes = seconds / 60;
         long hours = minutes / 60;
         
         if (hours > 0) {
-            return String.format("%dh %dm", hours, minutes % 60);
+            return TranslationUtil.translate("time.format.hours.minutes", String.valueOf(hours), String.valueOf(minutes % 60));
         } else if (minutes > 0) {
-            return String.format("%dm %ds", minutes, seconds % 60);
+            return TranslationUtil.translate("time.format.minutes.seconds", String.valueOf(minutes), String.valueOf(seconds % 60));
         } else {
-            return String.format("%ds", seconds);
+            return TranslationUtil.translate("time.format.seconds", String.valueOf(seconds));
         }
     }
     

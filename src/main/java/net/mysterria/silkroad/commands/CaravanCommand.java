@@ -7,6 +7,12 @@ import dev.rollczi.litecommands.annotations.execute.Execute;
 import dev.rollczi.litecommands.annotations.permission.Permission;
 import net.mysterria.silkroad.SilkRoad;
 import net.mysterria.silkroad.domain.caravan.manager.CaravanManager;
+import net.mysterria.silkroad.utils.TranslationUtil;
+import net.mysterria.silkroad.utils.ResourcePackGenerator;
+import net.mysterria.silkroad.utils.TranslationManager;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.mysterria.silkroad.domain.caravan.manager.CaravanCreationResult;
 import net.mysterria.silkroad.domain.caravan.model.Caravan;
 import net.mysterria.silkroad.domain.caravan.model.ResourceTransfer;
@@ -33,34 +39,34 @@ public class CaravanCommand {
         ItemStack wand = new ItemStack(Material.BLAZE_ROD);
         ItemMeta meta = wand.getItemMeta();
         if (meta != null) {
-            meta.setDisplayName("§6Caravan Territory Wand");
+            meta.setDisplayName(TranslationUtil.translate("item.caravan.wand"));
             meta.setLore(List.of("§7Right-click: §aSelect current chunk", "§7Left-click: §cDeselect current chunk", "§7Shift + Left-click: §c✖ Clear all selections", "§7Use §e/sr create <name> §7to create caravan from selected chunks"));
             meta.setCustomModelData(12345);
             wand.setItemMeta(meta);
         }
 
         sender.getInventory().addItem(wand);
-        sender.sendMessage("§aCaravan wand given! Use it to select chunks, then /sr create <name>.");
+        sender.sendMessage(TranslationUtil.translatable("command.wand.given", NamedTextColor.GREEN));
     }
 
     @Execute(name = "create")
     public void createCaravan(@Context Player sender, @Arg("name") String name) {
         String id = name.toLowerCase().replaceAll("[^a-z0-9_-]", "");
         if (id.isEmpty()) {
-            sender.sendMessage("§cInvalid caravan name!");
+            sender.sendMessage(TranslationUtil.translatable("command.name.invalid", NamedTextColor.RED));
             return;
         }
 
         var selection = caravanManager.getSelection(sender.getUniqueId());
         if (selection.isEmpty()) {
-            sender.sendMessage("§cYou have no selected chunks! §7Use the wand to select chunks first.");
+            sender.sendMessage(TranslationUtil.translatable("command.no.chunks.selected", NamedTextColor.RED));
             return;
         }
 
         CaravanCreationResult result = caravanManager.createCaravanWithValidation(id, name, sender.getLocation(), new java.util.HashSet<>(selection));
         
         if (result.isSuccess()) {
-            sender.sendMessage("§aCreated caravan: §d" + name + "§a with §e" + selection.size() + " §achunk(s).");
+            sender.sendMessage(TranslationUtil.translatable("command.caravan.created", NamedTextColor.GREEN, name, selection.size()));
             caravanManager.clearSelection(sender.getUniqueId());
         } else {
             sender.sendMessage(result.getMessage());
@@ -70,10 +76,10 @@ public class CaravanCommand {
     @Execute(name = "remove")
     public void removeCaravan(@Context CommandSender sender, @Arg("name") String id) {
         if (caravanManager.removeCaravan(id)) {
-            String message = "§aRemoved caravan: §d" + id;
+            String message = TranslationUtil.translate("command.caravan.removed", id);
             sender.sendMessage(message);
         } else {
-            sender.sendMessage("§cCaravan not found!");
+            sender.sendMessage(TranslationUtil.translatable("command.caravan.not.found", NamedTextColor.RED));
         }
     }
 
@@ -81,14 +87,14 @@ public class CaravanCommand {
     public void listCaravans(@Context CommandSender sender) {
         var caravans = caravanManager.getAllCaravans();
         if (caravans.isEmpty()) {
-            sender.sendMessage("§7No caravans found.");
+            sender.sendMessage(TranslationUtil.translatable("command.caravan.no.caravans", NamedTextColor.GRAY));
             return;
         }
 
         StringBuilder sb = new StringBuilder();
-        sb.append("§aCaravans (§d").append(caravans.size()).append("§a):\n");
+        sb.append(TranslationUtil.translate("command.caravan.list.header", String.valueOf(caravans.size()))).append("\n");
         for (Caravan caravan : caravans) {
-            sb.append("§7- §d").append(caravan.getName()).append(" §7(").append(caravan.getId()).append(")\n");
+            sb.append(TranslationUtil.translate("command.caravan.list.entry", caravan.getName(), caravan.getId())).append("\n");
         }
 
         sender.sendMessage(sb.toString());
@@ -98,36 +104,38 @@ public class CaravanCommand {
     public void caravanInfo(@Context CommandSender sender, @Arg("id") String id) {
         var caravanOpt = caravanManager.getCaravan(id);
         if (caravanOpt.isEmpty()) {
-            sender.sendMessage("§cCaravan not found!");
+            sender.sendMessage(TranslationUtil.translatable("command.caravan.not.found", NamedTextColor.RED));
             return;
         }
 
         Caravan caravan = caravanOpt.get();
         StringBuilder sb = new StringBuilder();
-        sb.append("§a=== Caravan Info ===\n");
-        sb.append("§7Name: §d").append(caravan.getName()).append("\n");
-        sb.append("§7ID: §f").append(caravan.getId()).append("\n");
-        sb.append("§7Location: §f").append(String.format("%.1f, %.1f, %.1f in %s", caravan.getLocation().getX(), caravan.getLocation().getY(), caravan.getLocation().getZ(), caravan.getLocation().getWorld().getName())).append("\n");
+        sb.append(TranslationUtil.translate("command.caravan.info.header")).append("\n");
+        sb.append(TranslationUtil.translate("command.caravan.info.name", caravan.getName())).append("\n");
+        sb.append(TranslationUtil.translate("command.caravan.info.id", caravan.getId())).append("\n");
+        String locationStr = String.format("%.1f, %.1f, %.1f in %s", caravan.getLocation().getX(), caravan.getLocation().getY(), caravan.getLocation().getZ(), caravan.getLocation().getWorld().getName());
+        sb.append(TranslationUtil.translate("command.caravan.info.location", locationStr)).append("\n");
         
         // Display town ownership information if available
         if (caravan.getOwningTownName() != null) {
-            sb.append("§7Town: §b").append(caravan.getOwningTownName());
             if (caravan.getOwningTownId() != -1) {
-                sb.append(" §7(ID: §f").append(caravan.getOwningTownId()).append("§7)");
+                sb.append(TranslationUtil.translate("command.caravan.info.town.id", caravan.getOwningTownName(), String.valueOf(caravan.getOwningTownId())));
+            } else {
+                sb.append(TranslationUtil.translate("command.caravan.info.town", caravan.getOwningTownName()));
             }
             sb.append("\n");
         } else {
-            sb.append("§7Town: §8None (Unclaimed territory)\n");
+            sb.append(TranslationUtil.translate("command.caravan.info.town.none")).append("\n");
         }
         
-        sb.append("§7Territory Chunks: §f").append(caravan.getTerritoryChunks().size()).append("\n");
-        sb.append("§7Resources: ");
+        sb.append(TranslationUtil.translate("command.caravan.info.chunks", String.valueOf(caravan.getTerritoryChunks().size()))).append("\n");
+        sb.append(TranslationUtil.translate("command.caravan.info.resources")).append(" ");
         if (caravan.getInventory().isEmpty()) {
-            sb.append("§fNone");
+            sb.append(TranslationUtil.translate("command.caravan.info.resources.none"));
         } else {
             sb.append("\n");
             for (var entry : caravan.getInventory().entrySet()) {
-                sb.append("  §7- §d").append(entry.getKey().name()).append("§7: §f").append(entry.getValue()).append("\n");
+                sb.append(TranslationUtil.translate("command.caravan.info.resource.entry", entry.getKey().name(), String.valueOf(entry.getValue()))).append("\n");
             }
         }
         sender.sendMessage(sb.toString());
@@ -138,15 +146,15 @@ public class CaravanCommand {
         List<ResourceTransfer> transfers = caravanManager.getPlayerTransfers(sender.getUniqueId());
 
         if (transfers.isEmpty()) {
-            sender.sendMessage("§7You have no active transfers.");
+            sender.sendMessage(TranslationUtil.translatable("command.no.active.transfers", NamedTextColor.GRAY));
             return;
         }
 
         StringBuilder sb = new StringBuilder();
-        sb.append("§aYour Transfers (§d").append(transfers.size()).append("§a):\n");
+        sb.append(TranslationUtil.translate("command.transfers.header", String.valueOf(transfers.size()))).append("\n");
         for (ResourceTransfer transfer : transfers) {
             String timeRemaining = formatTime(transfer.getRemainingTime());
-            sb.append("§7- §d").append(transfer.getSourceCaravanId()).append(" §7→ §d").append(transfer.getDestinationCaravanId()).append(" §7(§f").append(timeRemaining).append("§7)").append("\n");
+            sb.append(TranslationUtil.translate("command.transfers.entry", transfer.getSourceCaravanId(), transfer.getDestinationCaravanId(), timeRemaining)).append("\n");
         }
 
         sender.sendMessage(sb.toString());
@@ -155,18 +163,18 @@ public class CaravanCommand {
     @Execute(name = "addmember")
     public void addMember(@Context CommandSender sender, @Arg("caravan") String caravanId, @Arg("player") String playerName) {
         if (caravanManager.addMember(caravanId, playerName)) {
-            sender.sendMessage("§aAdded §d" + playerName + " §aas member of caravan §d" + caravanId + "§a.");
+            sender.sendMessage(TranslationUtil.translatable("command.member.added", NamedTextColor.GREEN, playerName, caravanId));
         } else {
-            sender.sendMessage("§cFailed to add member. Check that the caravan exists and the player is online.");
+            sender.sendMessage(TranslationUtil.translatable("command.member.add.failed", NamedTextColor.RED));
         }
     }
 
     @Execute(name = "removemember")
     public void removeMember(@Context CommandSender sender, @Arg("caravan") String caravanId, @Arg("player") String playerName) {
         if (caravanManager.removeMember(caravanId, playerName)) {
-            sender.sendMessage("§aRemoved §d" + playerName + " §aas member from caravan §d" + caravanId + "§a.");
+            sender.sendMessage(TranslationUtil.translatable("command.member.removed", NamedTextColor.GREEN, playerName, caravanId));
         } else {
-            sender.sendMessage("§cFailed to remove member. Check that the caravan exists and the player is online.");
+            sender.sendMessage(TranslationUtil.translatable("command.member.remove.failed", NamedTextColor.RED));
         }
     }
 
@@ -176,8 +184,51 @@ public class CaravanCommand {
 //        gui.open();
 //    }
 
+    @Execute(name = "resourcepack")
+    public void generateResourcePack(@Context CommandSender sender) {
+        sender.sendMessage(TranslationUtil.translatable("command.resourcepack.generating", NamedTextColor.YELLOW));
+        
+        try {
+            ResourcePackGenerator.generateResourcePackTranslations();
+            sender.sendMessage(TranslationUtil.translatable("command.resourcepack.success", NamedTextColor.GREEN));
+            sender.sendMessage(TranslationUtil.translatable("command.resourcepack.location", NamedTextColor.GRAY));
+            sender.sendMessage(TranslationUtil.translatable("command.resourcepack.zip.hint", NamedTextColor.GRAY));
+        } catch (Exception e) {
+            sender.sendMessage(TranslationUtil.translatable("command.resourcepack.failed", NamedTextColor.RED, e.getMessage()));
+            e.printStackTrace();
+        }
+    }
+
+    @Execute(name = "resourcepack zip")
+    public void generateResourcePackZip(@Context CommandSender sender) {
+        sender.sendMessage(TranslationUtil.translatable("command.resourcepack.zip.generating", NamedTextColor.YELLOW));
+        
+        try {
+            java.nio.file.Path zipPath = ResourcePackGenerator.generateResourcePackZip();
+            sender.sendMessage(TranslationUtil.translatable("command.resourcepack.zip.success", NamedTextColor.GREEN));
+            sender.sendMessage(TranslationUtil.translatable("command.resourcepack.zip.location", NamedTextColor.GRAY, zipPath.getFileName().toString()));
+            sender.sendMessage(TranslationUtil.translatable("command.resourcepack.zip.info", NamedTextColor.GRAY));
+        } catch (Exception e) {
+            sender.sendMessage(TranslationUtil.translatable("command.resourcepack.zip.failed", NamedTextColor.RED, e.getMessage()));
+            e.printStackTrace();
+        }
+    }
+
+    @Execute(name = "reload")
+    public void reloadTranslations(@Context CommandSender sender) {
+        sender.sendMessage(TranslationUtil.translatable("command.translations.reloading", NamedTextColor.YELLOW));
+        
+        try {
+            TranslationManager.reload();
+            sender.sendMessage(TranslationUtil.translatable("command.translations.reload.success", NamedTextColor.GREEN));
+        } catch (Exception e) {
+            sender.sendMessage(TranslationUtil.translatable("command.translations.reload.failed", NamedTextColor.RED, e.getMessage()));
+            e.printStackTrace();
+        }
+    }
+
     private String formatTime(long millis) {
-        if (millis <= 0) return "Ready!";
+        if (millis <= 0) return TranslationUtil.translate("time.ready");
 
         long seconds = millis / 1000;
         long minutes = seconds / 60;

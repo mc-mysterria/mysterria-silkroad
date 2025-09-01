@@ -5,6 +5,8 @@ import dev.triumphteam.gui.guis.Gui;
 import dev.triumphteam.gui.guis.GuiItem;
 import net.mysterria.silkroad.domain.caravan.manager.CaravanManager;
 import net.mysterria.silkroad.domain.caravan.model.Caravan;
+import net.mysterria.silkroad.utils.TranslationUtil;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.mysterria.silkroad.domain.caravan.model.ResourceTransfer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -30,12 +32,12 @@ public class CaravanManagementGUI {
         List<Caravan> playerCaravans = caravanManager.getPlayerCaravans(player.getUniqueId());
         
         if (playerCaravans.isEmpty()) {
-            player.sendMessage("§cYou are not a member of any caravans.");
+            player.sendMessage(TranslationUtil.translatable("caravan.no.member.caravans", NamedTextColor.RED));
             return;
         }
         
         Gui gui = Gui.gui()
-                .title(Component.text("Caravan Management").decoration(TextDecoration.ITALIC, false))
+                .title(TranslationUtil.translatable("gui.caravan.management").decoration(TextDecoration.ITALIC, false))
                 .rows(6)
                 .create();
         
@@ -54,11 +56,11 @@ public class CaravanManagementGUI {
             if (slot >= 44) break;
             
             GuiItem item = PaperItemBuilder.from(Material.EMERALD)
-                    .name(text("§d" + caravan.getName()))
-                    .lore(text("§7Location: §f" + formatLocation(caravan.getLocation())),
-                          text("§7Resources: §f" + caravan.getItemInventory().size() + " items"),
-                          text(""),
-                          text("§eClick to manage this caravan"))
+                    .name(Component.text(caravan.getName()).color(NamedTextColor.LIGHT_PURPLE).decoration(TextDecoration.ITALIC, false))
+                    .lore(TranslationUtil.translatable("gui.caravan.info.location.label", formatLocation(caravan.getLocation())).color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                          TranslationUtil.translatable("gui.caravan.info.resources.count", String.valueOf(caravan.getItemInventory().size())).color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                          Component.empty(),
+                          TranslationUtil.translatable("gui.click.to.manage").color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false))
                     .asGuiItem(event -> {
                         event.setCancelled(true);
                         openCaravanDetails(caravan);
@@ -74,9 +76,9 @@ public class CaravanManagementGUI {
         
         if (!incomingTransfers.isEmpty()) {
             GuiItem transfersItem = PaperItemBuilder.from(Material.CHEST_MINECART)
-                    .name(text("§aIncoming Transfers"))
-                    .lore(text("§7You have §e" + incomingTransfers.size() + " §7incoming transfers"),
-                          text("§eClick to view details"))
+                    .name(TranslationUtil.translatable("gui.incoming.transfers").color(NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false))
+                    .lore(TranslationUtil.translatable("gui.incoming.transfers.count", String.valueOf(incomingTransfers.size())).color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                          TranslationUtil.translatable("gui.destination.action").color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false))
                     .asGuiItem(event -> {
                         event.setCancelled(true);
                         openIncomingTransfers(incomingTransfers);
@@ -86,9 +88,9 @@ public class CaravanManagementGUI {
         
         if (!deliveredTransfers.isEmpty()) {
             GuiItem claimTransfersItem = PaperItemBuilder.from(Material.EMERALD)
-                    .name(text("§aDelivered Transfers"))
-                    .lore(text("§7You have §e" + deliveredTransfers.size() + " §7transfers ready to claim"),
-                          text("§eClick to claim your transfers"))
+                    .name(TranslationUtil.translatable("gui.delivered.transfers").color(NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false))
+                    .lore(TranslationUtil.translatable("gui.delivered.transfers.count", String.valueOf(deliveredTransfers.size())).color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                          TranslationUtil.translatable("gui.delivered.transfers.action").color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false))
                     .asGuiItem(event -> {
                         event.setCancelled(true);
                         TransferClaimGUI claimGUI = new TransferClaimGUI(caravanManager, player);
@@ -99,9 +101,9 @@ public class CaravanManagementGUI {
         
         // All transfers overview button
         GuiItem allTransfersItem = PaperItemBuilder.from(Material.COMPASS)
-                .name(text("§bAll Transfers"))
-                .lore(text("§7View all your transfers and their status"),
-                      text("§7Including active and completed transfers"))
+                .name(TranslationUtil.translatable("gui.all.transfers").color(NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false))
+                .lore(TranslationUtil.translatable("gui.all.transfers.description1").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                      TranslationUtil.translatable("gui.all.transfers.description2").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     openAllTransfersGUI();
@@ -109,7 +111,7 @@ public class CaravanManagementGUI {
         gui.setItem(50, allTransfersItem);
         
         GuiItem closeItem = PaperItemBuilder.from(Material.BARRIER)
-                .name(text("§cClose"))
+                .name(TranslationUtil.translatable("gui.close").color(NamedTextColor.RED).decoration(TextDecoration.ITALIC, false))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     player.closeInventory();
@@ -119,22 +121,22 @@ public class CaravanManagementGUI {
     
     private void openCaravanDetails(Caravan caravan) {
         Gui gui = Gui.gui()
-                .title(text("§6" + caravan.getName() + " Management"))
+                .title(TranslationUtil.translatable("gui.caravan.details.title", caravan.getName()).color(NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, false))
                 .rows(6)
                 .create();
         
         GuiItem infoItem = PaperItemBuilder.from(Material.BOOK)
-                .name(text("§aCaravan Information"))
-                .lore(text("§7Name: §d" + caravan.getName()),
-                      text("§7ID: §f" + caravan.getId()),
-                      text("§7Location: §f" + formatLocation(caravan.getLocation())))
+                .name(TranslationUtil.translatable("gui.caravan.info.label").color(NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false))
+                .lore(TranslationUtil.translatable("gui.caravan.info.name.label", caravan.getName()).color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                      TranslationUtil.translatable("gui.caravan.info.id.label", caravan.getId()).color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                      TranslationUtil.translatable("gui.caravan.info.location.label", formatLocation(caravan.getLocation())).color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false))
                 .asGuiItem(event -> event.setCancelled(true));
         gui.setItem(4, infoItem);
         
         GuiItem manageInventoryItem = PaperItemBuilder.from(Material.HOPPER)
-                .name(text("§6Manage Inventory"))
-                .lore(text("§7Deposit and withdraw items"),
-                      text("§7Interactive inventory management"))
+                .name(TranslationUtil.translatable("gui.manage.inventory").color(NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, false))
+                .lore(TranslationUtil.translatable("gui.manage.inventory.description1").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                      TranslationUtil.translatable("gui.manage.inventory.description2").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     openInventoryManagement(caravan);
@@ -142,8 +144,8 @@ public class CaravanManagementGUI {
         gui.setItem(23, manageInventoryItem);
         
         GuiItem transferItem = PaperItemBuilder.from(Material.MINECART)
-                .name(text("§6Send Resources"))
-                .lore(text("§7Transfer resources to another caravan"))
+                .name(TranslationUtil.translatable("gui.send.resources.label").color(NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, false))
+                .lore(TranslationUtil.translatable("gui.send.resources.description").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     openTransferGUI(caravan);
@@ -151,7 +153,7 @@ public class CaravanManagementGUI {
         gui.setItem(21, transferItem);
         
         GuiItem backItem = PaperItemBuilder.from(Material.ARROW)
-                .name(text("§7← Back"))
+                .name(TranslationUtil.translatable("gui.back.arrow").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     open();
@@ -159,7 +161,7 @@ public class CaravanManagementGUI {
         gui.setItem(45, backItem);
         
         GuiItem closeItem = PaperItemBuilder.from(Material.BARRIER)
-                .name(text("§cClose"))
+                .name(TranslationUtil.translatable("gui.close").color(NamedTextColor.RED).decoration(TextDecoration.ITALIC, false))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     player.closeInventory();
@@ -171,7 +173,7 @@ public class CaravanManagementGUI {
     
     private void openCaravanInventory(Caravan caravan) {
         Gui gui = Gui.gui()
-                .title(text("§6" + caravan.getName() + " - Inventory"))
+                .title(TranslationUtil.translatable("gui.caravan.inventory.title", caravan.getName()).color(NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, false))
                 .rows(6)
                 .create();
         
@@ -185,8 +187,8 @@ public class CaravanManagementGUI {
                     : itemStack.getType().name().toLowerCase().replace('_', ' ');
             
             GuiItem item = PaperItemBuilder.from(itemStack.clone())
-                    .lore(text("§7Amount: §e" + itemStack.getAmount()),
-                          text("§7Type: §f" + itemName))
+                    .lore(TranslationUtil.translatable("gui.inventory.amount.label", String.valueOf(itemStack.getAmount())).color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                          TranslationUtil.translatable("gui.inventory.type.label", itemName).color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false))
                     .asGuiItem(event -> event.setCancelled(true));
             
             gui.setItem(slot, item);
@@ -195,14 +197,14 @@ public class CaravanManagementGUI {
         
         if (caravan.getItemInventory().isEmpty()) {
             GuiItem emptyItem = PaperItemBuilder.from(Material.BARRIER)
-                    .name(text("§7Empty Inventory"))
-                    .lore(text("§7This caravan has no resources"))
+                    .name(TranslationUtil.translatable("gui.empty.inventory.title").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false))
+                    .lore(TranslationUtil.translatable("gui.empty.inventory.description").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false))
                     .asGuiItem(event -> event.setCancelled(true));
             gui.setItem(22, emptyItem);
         }
         
         GuiItem backItem = PaperItemBuilder.from(Material.ARROW)
-                .name(text("§7← Back"))
+                .name(TranslationUtil.translatable("gui.back.arrow").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     openCaravanDetails(caravan);
@@ -218,12 +220,12 @@ public class CaravanManagementGUI {
                 .toList();
         
         if (availableDestinations.isEmpty()) {
-            player.sendMessage("§cNo other caravans available for transfer.");
+            player.sendMessage(TranslationUtil.translatable("caravan.no.other.caravans", NamedTextColor.RED));
             return;
         }
         
         Gui gui = Gui.gui()
-                .title(text("§6Select Destination Caravan"))
+                .title(TranslationUtil.translatable("gui.select.destination.title").color(NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, false))
                 .rows(6)
                 .create();
         
@@ -235,14 +237,16 @@ public class CaravanManagementGUI {
             if (slot >= 44) break;
             
             double distance = sourceCaravan.distanceTo(destination);
-            String distanceStr = distance == Double.MAX_VALUE ? "Different World" : String.format("%.1f blocks", distance);
+            String distanceStr = distance == Double.MAX_VALUE ? 
+                TranslationUtil.translate("gui.destination.different.world") : 
+                TranslationUtil.translate("gui.destination.distance.blocks", String.format("%.1f", distance));
             
             GuiItem item = PaperItemBuilder.from(Material.ENDER_PEARL)
-                    .name(text("§d" + destination.getName()))
-                    .lore(text("§7Distance: §f" + distanceStr),
-                          text("§7Location: §f" + formatLocation(destination.getLocation())),
-                          text(""),
-                          text("§eClick to select destination"))
+                    .name(Component.text(destination.getName()).color(NamedTextColor.LIGHT_PURPLE).decoration(TextDecoration.ITALIC, false))
+                    .lore(TranslationUtil.translatable("gui.destination.distance.label", distanceStr).color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                          TranslationUtil.translatable("gui.caravan.info.location.label", formatLocation(destination.getLocation())).color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                          Component.empty(),
+                          TranslationUtil.translatable("gui.destination.action").color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false))
                     .asGuiItem(event -> {
                         event.setCancelled(true);
                         openResourceSelectionGUI(sourceCaravan, destination);
@@ -253,7 +257,7 @@ public class CaravanManagementGUI {
         }
         
         GuiItem backItem = PaperItemBuilder.from(Material.ARROW)
-                .name(text("§7← Back"))
+                .name(TranslationUtil.translatable("gui.back.arrow").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     openCaravanDetails(sourceCaravan);
@@ -276,7 +280,7 @@ public class CaravanManagementGUI {
     
     private void openIncomingTransfers(List<ResourceTransfer> transfers) {
         Gui gui = Gui.gui()
-                .title(text("§aIncoming Transfers"))
+                .title(TranslationUtil.translatable("gui.incoming.transfers.title.hardcoded").color(NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false))
                 .rows(6)
                 .create();
         
@@ -293,22 +297,22 @@ public class CaravanManagementGUI {
                 case FAILED -> Material.RED_WOOL;
             };
             
-            List<String> lore = new ArrayList<>();
-            lore.add("§7From: §d" + transfer.getSourceCaravanId());
-            lore.add("§7To: §d" + transfer.getDestinationCaravanId());
-            lore.add("§7Status: §f" + status);
-            lore.add("§7Time Remaining: §e" + timeRemaining);
-            lore.add("§7Distance: §f" + String.format("%.1f blocks", transfer.getDistance()));
-            lore.add("§7Cost: §6" + transfer.getCost() + " shards");
-            lore.add("");
-            lore.add("§7Resources:");
+            List<Component> lore = new ArrayList<>();
+            lore.add(TranslationUtil.translatable("gui.transfer.from", transfer.getSourceCaravanId()).color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            lore.add(TranslationUtil.translatable("gui.transfer.to", transfer.getDestinationCaravanId()).color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            lore.add(TranslationUtil.translatable("gui.transfer.status", status).color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            lore.add(TranslationUtil.translatable("gui.transfer.time.remaining", timeRemaining).color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
+            lore.add(TranslationUtil.translatable("gui.transfer.distance.blocks.label", String.format("%.1f", transfer.getDistance())).color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            lore.add(TranslationUtil.translatable("gui.transfer.cost.shards", String.valueOf(transfer.getCost())).color(NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.empty());
+            lore.add(TranslationUtil.translatable("gui.transfer.resources.heading").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
             for (var entry : transfer.getResources().entrySet()) {
-                lore.add("  §8- §f" + entry.getValue() + "x " + entry.getKey().name().toLowerCase().replace('_', ' '));
+                lore.add(Component.text("  - " + entry.getValue() + "x " + entry.getKey().name().toLowerCase().replace('_', ' ')).color(NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false));
             }
             
             GuiItem item = PaperItemBuilder.from(statusMaterial)
-                    .name(text("§eTransfer #" + transfer.getId().substring(0, 8)))
-                    .lore(lore.stream().map(this::text).toArray(Component[]::new))
+                    .name(TranslationUtil.translatable("gui.transfer.id", transfer.getId().substring(0, 8)).color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false))
+                    .lore(lore.toArray(Component[]::new))
                     .asGuiItem(event -> event.setCancelled(true));
             
             gui.setItem(slot, item);
@@ -317,14 +321,14 @@ public class CaravanManagementGUI {
         
         if (transfers.isEmpty()) {
             GuiItem emptyItem = PaperItemBuilder.from(Material.BARRIER)
-                    .name(text("§7No Incoming Transfers"))
-                    .lore(text("§7You have no incoming transfers"))
+                    .name(TranslationUtil.translatable("gui.transfer.no.incoming").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false))
+                    .lore(TranslationUtil.translatable("gui.transfer.no.incoming.description").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false))
                     .asGuiItem(event -> event.setCancelled(true));
             gui.setItem(22, emptyItem);
         }
         
         GuiItem backItem = PaperItemBuilder.from(Material.ARROW)
-                .name(text("§7← Back"))
+                .name(TranslationUtil.translatable("gui.back.to.main").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     open();
@@ -339,7 +343,7 @@ public class CaravanManagementGUI {
         List<ResourceTransfer> deliveredTransfers = caravanManager.getDeliveredTransfersForPlayer(player.getUniqueId());
         
         Gui gui = Gui.gui()
-                .title(text("§bAll Your Transfers"))
+                .title(TranslationUtil.translatable("gui.all.transfers.title.hardcoded").color(NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false))
                 .rows(6)
                 .create();
         
@@ -355,10 +359,10 @@ public class CaravanManagementGUI {
             if (slot >= 45) break;
             
             String status = transfer.getStatus().name();
-            String timeInfo = switch (transfer.getStatus()) {
-                case PENDING, IN_TRANSIT -> "ETA: " + formatTime(transfer.getRemainingTime());
-                case DELIVERED -> "Ready to claim";
-                case FAILED -> "Failed";
+            Component timeInfo = switch (transfer.getStatus()) {
+                case PENDING, IN_TRANSIT -> TranslationUtil.translatable("gui.transfer.eta.prefix", formatTime(transfer.getRemainingTime()));
+                case DELIVERED -> TranslationUtil.translatable("gui.transfer.ready.claim");
+                case FAILED -> TranslationUtil.translatable("gui.transfer.failed.status");
             };
             
             Material statusMaterial = switch (transfer.getStatus()) {
@@ -368,22 +372,22 @@ public class CaravanManagementGUI {
                 case FAILED -> Material.RED_WOOL;
             };
             
-            List<String> lore = new ArrayList<>();
-            lore.add("§7From: §d" + transfer.getSourceCaravanId());
-            lore.add("§7To: §d" + transfer.getDestinationCaravanId());
-            lore.add("§7Status: §f" + status);
-            lore.add("§7" + timeInfo);
-            lore.add("§7Distance: §f" + String.format("%.1f blocks", transfer.getDistance()));
-            lore.add("§7Cost: §6" + transfer.getCost() + " shards");
+            List<Component> lore = new ArrayList<>();
+            lore.add(TranslationUtil.translatable("gui.transfer.from", transfer.getSourceCaravanId()).color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            lore.add(TranslationUtil.translatable("gui.transfer.to", transfer.getDestinationCaravanId()).color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            lore.add(TranslationUtil.translatable("gui.transfer.status", status).color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            lore.add(timeInfo.color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            lore.add(TranslationUtil.translatable("gui.transfer.distance.blocks.label", String.format("%.1f", transfer.getDistance())).color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            lore.add(TranslationUtil.translatable("gui.transfer.cost.shards", String.valueOf(transfer.getCost())).color(NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, false));
             
             if (transfer.getStatus() == ResourceTransfer.TransferStatus.DELIVERED) {
-                lore.add("");
-                lore.add("§aClick to claim this transfer!");
+                lore.add(Component.empty());
+                lore.add(TranslationUtil.translatable("gui.transfer.click.claim").color(NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
             }
             
             GuiItem item = PaperItemBuilder.from(statusMaterial)
-                    .name(text("§eTransfer #" + transfer.getId().substring(0, 8)))
-                    .lore(lore.stream().map(this::text).toArray(Component[]::new))
+                    .name(TranslationUtil.translatable("gui.transfer.id", transfer.getId().substring(0, 8)).color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false))
+                    .lore(lore.toArray(Component[]::new))
                     .asGuiItem(event -> {
                         event.setCancelled(true);
                         if (transfer.getStatus() == ResourceTransfer.TransferStatus.DELIVERED) {
@@ -398,8 +402,8 @@ public class CaravanManagementGUI {
         
         if (allTransfers.isEmpty()) {
             GuiItem emptyItem = PaperItemBuilder.from(Material.BARRIER)
-                    .name(text("§7No Transfers"))
-                    .lore(text("§7You have no transfers yet"))
+                    .name(TranslationUtil.translatable("gui.transfer.no.transfers.yet").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false))
+                    .lore(TranslationUtil.translatable("gui.transfer.no.transfers.yet.description").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false))
                     .asGuiItem(event -> event.setCancelled(true));
             gui.setItem(22, emptyItem);
         }
@@ -407,9 +411,9 @@ public class CaravanManagementGUI {
         // Quick claim button if there are delivered transfers
         if (!deliveredTransfers.isEmpty()) {
             GuiItem quickClaimItem = PaperItemBuilder.from(Material.DIAMOND)
-                    .name(text("§a✓ Quick Claim All"))
-                    .lore(text("§7Claim all " + deliveredTransfers.size() + " delivered transfers"),
-                          text("§eClick to open claim interface"))
+                    .name(TranslationUtil.translatable("gui.quick.claim.all.transfers").color(NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false))
+                    .lore(TranslationUtil.translatable("gui.quick.claim.delivered.count", String.valueOf(deliveredTransfers.size())).color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                          TranslationUtil.translatable("gui.quick.claim.open.interface").color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false))
                     .asGuiItem(event -> {
                         event.setCancelled(true);
                         TransferClaimGUI claimGUI = new TransferClaimGUI(caravanManager, player);
@@ -419,7 +423,7 @@ public class CaravanManagementGUI {
         }
         
         GuiItem backItem = PaperItemBuilder.from(Material.ARROW)
-                .name(text("§7← Back"))
+                .name(TranslationUtil.translatable("gui.back.to.main").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     open();
@@ -437,18 +441,18 @@ public class CaravanManagementGUI {
     }
     
     private String formatTime(long millis) {
-        if (millis <= 0) return "Ready!";
+        if (millis <= 0) return TranslationUtil.translate("time.ready");
         
         long seconds = millis / 1000;
         long minutes = seconds / 60;
         long hours = minutes / 60;
         
         if (hours > 0) {
-            return String.format("%dh %dm", hours, minutes % 60);
+            return TranslationUtil.translate("time.format.hours.minutes", String.valueOf(hours), String.valueOf(minutes % 60));
         } else if (minutes > 0) {
-            return String.format("%dm %ds", minutes, seconds % 60);
+            return TranslationUtil.translate("time.format.minutes.seconds", String.valueOf(minutes), String.valueOf(seconds % 60));
         } else {
-            return String.format("%ds", seconds);
+            return TranslationUtil.translate("time.format.seconds", String.valueOf(seconds));
         }
     }
     

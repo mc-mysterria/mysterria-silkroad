@@ -9,6 +9,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.mysterria.silkroad.domain.caravan.manager.CaravanManager;
 import net.mysterria.silkroad.domain.caravan.model.Caravan;
+import net.mysterria.silkroad.utils.TranslationUtil;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 
@@ -27,7 +28,7 @@ public class CaravanInventoryGUI {
         this.caravan = caravan;
         
         this.gui = Gui.paginated()
-                .title(Component.text("Inventory: " + caravan.getName()))
+                .title(TranslationUtil.translatable("gui.inventory.title", NamedTextColor.WHITE, caravan.getName()))
                 .rows(6)
                 .create();
         
@@ -37,7 +38,7 @@ public class CaravanInventoryGUI {
     
     private void setupNavigationItems() {
         GuiItem prevItem = ItemBuilder.from(Material.ARROW)
-                .name(Component.text("Previous Page").decoration(TextDecoration.ITALIC, false))
+                .name(TranslationUtil.translatable("gui.previous.page").decoration(TextDecoration.ITALIC, false))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     gui.previous();
@@ -45,7 +46,7 @@ public class CaravanInventoryGUI {
         gui.setItem(6, 3, prevItem);
         
         GuiItem nextItem = ItemBuilder.from(Material.ARROW)
-                .name(Component.text("Next Page").decoration(TextDecoration.ITALIC, false))
+                .name(TranslationUtil.translatable("gui.next.page").decoration(TextDecoration.ITALIC, false))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     gui.next();
@@ -53,7 +54,7 @@ public class CaravanInventoryGUI {
         gui.setItem(6, 7, nextItem);
         
         GuiItem backItem = ItemBuilder.from(Material.BARRIER)
-                .name(Component.text("Back").decoration(TextDecoration.ITALIC, false))
+                .name(TranslationUtil.translatable("gui.back").decoration(TextDecoration.ITALIC, false))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     new CaravanMainGUI(caravanManager, player, caravan).open();
@@ -64,10 +65,10 @@ public class CaravanInventoryGUI {
     private void addInventoryItems() {
         if (caravan.getItemInventory().isEmpty()) {
             GuiItem emptyItem = ItemBuilder.from(Material.GRAY_STAINED_GLASS_PANE)
-                    .name(Component.text("Empty Inventory")
+                    .name(TranslationUtil.translatable("gui.empty.inventory")
                             .color(NamedTextColor.GRAY)
                             .decoration(TextDecoration.ITALIC, false))
-                    .lore(Component.text("This caravan has no resources stored")
+                    .lore(TranslationUtil.translatable("gui.empty.inventory.description")
                             .decoration(TextDecoration.ITALIC, false))
                     .asGuiItem(event -> event.setCancelled(true));
             
@@ -84,9 +85,9 @@ public class CaravanInventoryGUI {
             
             GuiItem item = ItemBuilder.from(itemStack.clone())
                     .lore(
-                            Component.text("Amount: " + itemStack.getAmount()).decoration(TextDecoration.ITALIC, false),
-                            Component.text(""),
-                            Component.text("This resource is stored in the caravan")
+                            TranslationUtil.translatable("gui.amount.label", NamedTextColor.WHITE, itemStack.getAmount()).decoration(TextDecoration.ITALIC, false),
+                            Component.empty(),
+                            TranslationUtil.translatable("gui.resource.stored")
                                     .color(NamedTextColor.GRAY)
                                     .decoration(TextDecoration.ITALIC, false)
                     )

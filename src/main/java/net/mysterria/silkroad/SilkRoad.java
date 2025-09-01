@@ -8,6 +8,7 @@ import net.mysterria.silkroad.config.SilkRoadConfig;
 import net.mysterria.silkroad.domain.caravan.manager.CaravanManager;
 import net.mysterria.silkroad.listeners.CaravanInteractionListener;
 import net.mysterria.silkroad.listeners.CaravanWandListener;
+import net.mysterria.silkroad.utils.TranslationManager;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.bukkit.Bukkit;
@@ -35,6 +36,9 @@ public final class SilkRoad extends JavaPlugin {
 
         createDataFolders();
         this.pluginConfig = new SilkRoadConfig();
+        
+        // Initialize translation system
+        TranslationManager.initialize();
         
         this.caravanManager = new CaravanManager();
         

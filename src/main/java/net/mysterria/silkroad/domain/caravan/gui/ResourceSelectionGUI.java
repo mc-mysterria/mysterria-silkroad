@@ -11,6 +11,7 @@ import net.mysterria.silkroad.domain.caravan.manager.CaravanManager;
 import net.mysterria.silkroad.domain.caravan.model.Caravan;
 import net.mysterria.silkroad.domain.caravan.model.ResourceTransfer;
 import net.mysterria.silkroad.utils.ShardUtils;
+import net.mysterria.silkroad.utils.TranslationUtil;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 
@@ -38,7 +39,7 @@ public class ResourceSelectionGUI {
         this.destinationCaravan = destinationCaravan;
         
         this.gui = Gui.paginated()
-                .title(Component.text("Select Resources to Send").decoration(TextDecoration.ITALIC, false))
+                .title(TranslationUtil.translatable("gui.select.resources").decoration(TextDecoration.ITALIC, false))
                 .rows(6)
                 .create();
         
@@ -48,7 +49,7 @@ public class ResourceSelectionGUI {
     
     private void setupNavigationItems() {
         GuiItem prevItem = ItemBuilder.from(Material.ARROW)
-                .name(Component.text("Previous Page").decoration(TextDecoration.ITALIC, false))
+                .name(TranslationUtil.translatable("gui.previous.page").decoration(TextDecoration.ITALIC, false))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     gui.previous();
@@ -56,7 +57,7 @@ public class ResourceSelectionGUI {
         gui.setItem(6, 2, prevItem);
         
         GuiItem nextItem = ItemBuilder.from(Material.ARROW)
-                .name(Component.text("Next Page").decoration(TextDecoration.ITALIC, false))
+                .name(TranslationUtil.translatable("gui.next.page").decoration(TextDecoration.ITALIC, false))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     gui.next();
@@ -64,7 +65,7 @@ public class ResourceSelectionGUI {
         gui.setItem(6, 8, nextItem);
         
         GuiItem backItem = ItemBuilder.from(Material.BARRIER)
-                .name(Component.text("Back").decoration(TextDecoration.ITALIC, false))
+                .name(TranslationUtil.translatable("gui.back").decoration(TextDecoration.ITALIC, false))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     new CaravanSelectionGUI(caravanManager, player, sourceCaravan).open();
@@ -80,10 +81,10 @@ public class ResourceSelectionGUI {
         
         if (sourceCaravan.getItemInventory().isEmpty()) {
             GuiItem emptyItem = ItemBuilder.from(Material.GRAY_STAINED_GLASS_PANE)
-                    .name(Component.text("No Resources Available")
+                    .name(TranslationUtil.translatable("gui.no.resources")
                             .color(NamedTextColor.GRAY)
                             .decoration(TextDecoration.ITALIC, false))
-                    .lore(Component.text("This caravan has no resources to send")
+                    .lore(TranslationUtil.translatable("gui.no.resources.description")
                             .color(NamedTextColor.GRAY)
                             .decoration(TextDecoration.ITALIC, false))
                     .asGuiItem(event -> event.setCancelled(true));
@@ -108,15 +109,15 @@ public class ResourceSelectionGUI {
                     : itemStack.getType().name().toLowerCase().replace('_', ' ');
             
             List<Component> lore = new ArrayList<>();
-            lore.add(Component.text("Available: " + itemStack.getAmount()).decoration(TextDecoration.ITALIC, false));
-            lore.add(Component.text("Selected: " + selected)
+            lore.add(TranslationUtil.translatable("item.available", NamedTextColor.WHITE, itemStack.getAmount()).decoration(TextDecoration.ITALIC, false));
+            lore.add(TranslationUtil.translatable("item.selected", selected > 0 ? NamedTextColor.GREEN : NamedTextColor.GRAY, selected)
                     .color(selected > 0 ? NamedTextColor.GREEN : NamedTextColor.GRAY)
                     .decoration(TextDecoration.ITALIC, false));
-            lore.add(Component.text(""));
-            lore.add(Component.text("Left-click: Select 1").decoration(TextDecoration.ITALIC, false));
-            lore.add(Component.text("Right-click: Select half").decoration(TextDecoration.ITALIC, false));
-            lore.add(Component.text("Shift-left: Select all").decoration(TextDecoration.ITALIC, false));
-            lore.add(Component.text("Shift-right: Remove from selection").decoration(TextDecoration.ITALIC, false));
+            lore.add(Component.empty());
+            lore.add(TranslationUtil.translatable("item.click.select.1").decoration(TextDecoration.ITALIC, false));
+            lore.add(TranslationUtil.translatable("item.click.select.half").decoration(TextDecoration.ITALIC, false));
+            lore.add(TranslationUtil.translatable("item.click.select.all").decoration(TextDecoration.ITALIC, false));
+            lore.add(TranslationUtil.translatable("item.click.remove").decoration(TextDecoration.ITALIC, false));
             
             GuiItem item = ItemBuilder.from(itemStack.clone())
                     .name(Component.text(itemName).decoration(TextDecoration.ITALIC, false))
@@ -167,23 +168,24 @@ public class ResourceSelectionGUI {
         
         Material material = hasSelection ? Material.EMERALD : Material.GRAY_DYE;
         Component name = hasSelection ? 
-                Component.text("Confirm Transfer").color(NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false) :
-                Component.text("Select Resources First").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false);
+                TranslationUtil.translatable("item.confirm.transfer").color(NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false) :
+                TranslationUtil.translatable("item.select.first").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false);
         
         List<Component> lore = new ArrayList<>();
-        lore.add(Component.text("Destination: " + destinationCaravan.getName()).decoration(TextDecoration.ITALIC, false));
-        lore.add(Component.text("Distance: " + String.format("%.1f blocks", distance)).decoration(TextDecoration.ITALIC, false));
-        lore.add(Component.text("Total Cost: " + ShardUtils.formatShardCost(totalCost)).decoration(TextDecoration.ITALIC, false));
-        lore.add(Component.text("Your Shards: " + ShardUtils.getTotalPlayerShards(player))
-                .color(ShardUtils.getTotalPlayerShards(player) >= totalCost ? NamedTextColor.GREEN : NamedTextColor.RED)
+        lore.add(TranslationUtil.translatable("item.destination", NamedTextColor.WHITE, destinationCaravan.getName()).decoration(TextDecoration.ITALIC, false));
+        lore.add(TranslationUtil.translatable("item.distance", NamedTextColor.WHITE, String.format("%.1f blocks", distance)).decoration(TextDecoration.ITALIC, false));
+        lore.add(TranslationUtil.translatable("item.total.cost", NamedTextColor.WHITE, ShardUtils.formatShardCost(totalCost)).decoration(TextDecoration.ITALIC, false));
+        lore.add(TranslationUtil.translatable("item.your.shards", 
+                ShardUtils.getTotalPlayerShards(player) >= totalCost ? NamedTextColor.GREEN : NamedTextColor.RED, 
+                ShardUtils.getTotalPlayerShards(player))
                 .decoration(TextDecoration.ITALIC, false));
-        lore.add(Component.text("Delivery Time: " + formatTime(deliveryTime)).decoration(TextDecoration.ITALIC, false));
-        lore.add(Component.text(""));
+        lore.add(TranslationUtil.translatable("item.delivery.time", NamedTextColor.WHITE, formatTime(deliveryTime)).decoration(TextDecoration.ITALIC, false));
+        lore.add(Component.empty());
         
         if (hasSelection) {
-            lore.add(Component.text("Click to confirm transfer").color(NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
+            lore.add(TranslationUtil.translatable("item.click.confirm").color(NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
         } else {
-            lore.add(Component.text("Select resources first").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            lore.add(TranslationUtil.translatable("item.select.resources.first").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
         }
         
         GuiItem confirmItem = ItemBuilder.from(material)
@@ -201,19 +203,19 @@ public class ResourceSelectionGUI {
     
     private void updateSummaryItem() {
         List<Component> lore = new ArrayList<>();
-        lore.add(Component.text("Selected Resources:").decoration(TextDecoration.ITALIC, false));
+        lore.add(TranslationUtil.translatable("item.selected.resources").decoration(TextDecoration.ITALIC, false));
         
         if (selectedResources.isEmpty()) {
-            lore.add(Component.text("  None").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            lore.add(TranslationUtil.translatable("item.none").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
         } else {
             for (Map.Entry<Material, Integer> entry : selectedResources.entrySet()) {
-                lore.add(Component.text("  " + entry.getKey().name() + ": " + entry.getValue())
+                lore.add(TranslationUtil.translatable("gui.resource.quantity", entry.getKey().name(), entry.getValue())
                         .decoration(TextDecoration.ITALIC, false));
             }
         }
         
         GuiItem summaryItem = ItemBuilder.from(Material.PAPER)
-                .name(Component.text("Transfer Summary").decoration(TextDecoration.ITALIC, false))
+                .name(TranslationUtil.translatable("item.transfer.summary").decoration(TextDecoration.ITALIC, false))
                 .lore(lore)
                 .asGuiItem(event -> event.setCancelled(true));
         
@@ -265,11 +267,11 @@ public class ResourceSelectionGUI {
         long hours = minutes / 60;
         
         if (hours > 0) {
-            return String.format("%dh %dm", hours, minutes % 60);
+            return TranslationUtil.translate("time.format.hours.minutes", String.valueOf(hours), String.valueOf(minutes % 60));
         } else if (minutes > 0) {
-            return String.format("%dm %ds", minutes, seconds % 60);
+            return TranslationUtil.translate("time.format.minutes.seconds", String.valueOf(minutes), String.valueOf(seconds % 60));
         } else {
-            return String.format("%ds", seconds);
+            return TranslationUtil.translate("time.format.seconds", String.valueOf(seconds));
         }
     }
     

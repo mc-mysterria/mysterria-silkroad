@@ -4,9 +4,11 @@ import dev.triumphteam.gui.builder.item.ItemBuilder;
 import dev.triumphteam.gui.guis.Gui;
 import dev.triumphteam.gui.guis.GuiItem;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.mysterria.silkroad.domain.caravan.manager.CaravanManager;
 import net.mysterria.silkroad.domain.caravan.model.Caravan;
+import net.mysterria.silkroad.utils.TranslationUtil;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 
@@ -26,7 +28,7 @@ public class CaravanMainGUI {
         this.currentCaravan = currentCaravan;
         
         this.gui = Gui.gui()
-                .title(Component.text("Caravan: " + currentCaravan.getName()).decoration(TextDecoration.ITALIC, false))
+                .title(TranslationUtil.translatable("gui.caravan.title", NamedTextColor.WHITE, currentCaravan.getName()).decoration(TextDecoration.ITALIC, false))
                 .rows(3)
                 .create();
         
@@ -35,10 +37,10 @@ public class CaravanMainGUI {
     
     private void setupGUI() {
         GuiItem sendResourcesItem = ItemBuilder.from(Material.MINECART)
-                .name(Component.text("Send Resources").decoration(TextDecoration.ITALIC, false))
+                .name(TranslationUtil.translatable("gui.send.resources").decoration(TextDecoration.ITALIC, false))
                 .lore(
-                        Component.text("Send resources to other caravans").decoration(TextDecoration.ITALIC, false),
-                        Component.text("Delivery time depends on distance").decoration(TextDecoration.ITALIC, false)
+                        TranslationUtil.translatable("gui.send.resources.description").decoration(TextDecoration.ITALIC, false),
+                        TranslationUtil.translatable("gui.delivery.time.description").decoration(TextDecoration.ITALIC, false)
                 )
                 .asGuiItem(event -> {
                     event.setCancelled(true);
@@ -47,9 +49,9 @@ public class CaravanMainGUI {
         gui.setItem(1, 4, sendResourcesItem);
         
         GuiItem transfersItem = ItemBuilder.from(Material.CLOCK)
-                .name(Component.text("Active Transfers").decoration(TextDecoration.ITALIC, false))
+                .name(TranslationUtil.translatable("gui.active.transfers").decoration(TextDecoration.ITALIC, false))
                 .lore(
-                        Component.text("View your ongoing deliveries").decoration(TextDecoration.ITALIC, false)
+                        TranslationUtil.translatable("gui.active.transfers.description").decoration(TextDecoration.ITALIC, false)
                 )
                 .asGuiItem(event -> {
                     event.setCancelled(true);
@@ -58,7 +60,7 @@ public class CaravanMainGUI {
         gui.setItem(1, 6, transfersItem);
         
         GuiItem infoItem = ItemBuilder.from(Material.BOOK)
-                .name(Component.text("Caravan Info").decoration(TextDecoration.ITALIC, false))
+                .name(TranslationUtil.translatable("gui.caravan.info").decoration(TextDecoration.ITALIC, false))
                 .lore(createInfoLore())
                 .asGuiItem(event -> {
                     event.setCancelled(true);
@@ -66,7 +68,7 @@ public class CaravanMainGUI {
         gui.setItem(2, 5, infoItem);
         
         GuiItem closeItem = ItemBuilder.from(Material.BARRIER)
-                .name(Component.text("Close").decoration(TextDecoration.ITALIC, false))
+                .name(TranslationUtil.translatable("gui.close").decoration(TextDecoration.ITALIC, false))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     player.closeInventory();
@@ -77,10 +79,10 @@ public class CaravanMainGUI {
     
     private List<Component> createInfoLore() {
         List<Component> lore = new ArrayList<>();
-        lore.add(Component.text("Name: " + currentCaravan.getName()).decoration(TextDecoration.ITALIC, false));
-        lore.add(Component.text("ID: " + currentCaravan.getId()).decoration(TextDecoration.ITALIC, false));
-        lore.add(Component.text("Location: " + formatLocation()).decoration(TextDecoration.ITALIC, false));
-        lore.add(Component.text("Created: " + formatTime(currentCaravan.getCreatedAt())).decoration(TextDecoration.ITALIC, false));
+        lore.add(TranslationUtil.translatable("gui.caravan.name", currentCaravan.getName()).decoration(TextDecoration.ITALIC, false));
+        lore.add(TranslationUtil.translatable("gui.caravan.id", currentCaravan.getId()).decoration(TextDecoration.ITALIC, false));
+        lore.add(TranslationUtil.translatable("gui.caravan.location", formatLocation()).decoration(TextDecoration.ITALIC, false));
+        lore.add(TranslationUtil.translatable("gui.caravan.created", formatTime(currentCaravan.getCreatedAt())).decoration(TextDecoration.ITALIC, false));
         
         return lore;
     }
@@ -93,10 +95,10 @@ public class CaravanMainGUI {
     private String formatTime(long timestamp) {
         long hours = (System.currentTimeMillis() - timestamp) / (1000 * 60 * 60);
         if (hours < 24) {
-            return hours + " hours ago";
+            return TranslationUtil.translate("time.hours.ago", String.valueOf(hours));
         } else {
             long days = hours / 24;
-            return days + " days ago";
+            return TranslationUtil.translate("time.days.ago", String.valueOf(days));
         }
     }
     

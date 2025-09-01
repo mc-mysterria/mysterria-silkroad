@@ -5,6 +5,8 @@ import dev.triumphteam.gui.guis.Gui;
 import dev.triumphteam.gui.guis.GuiItem;
 import net.mysterria.silkroad.domain.caravan.manager.CaravanManager;
 import net.mysterria.silkroad.domain.caravan.model.Caravan;
+import net.mysterria.silkroad.utils.TranslationUtil;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Material;
@@ -29,7 +31,7 @@ public class CaravanInventoryManagementGUI {
     
     public void open() {
         Gui gui = Gui.gui()
-                .title(text("§6" + caravan.getName() + " - Inventory Management"))
+                .title(TranslationUtil.translatable("gui.inventory.management.title", NamedTextColor.GOLD, caravan.getName()))
                 .rows(6)
                 .create();
         
@@ -66,9 +68,9 @@ public class CaravanInventoryManagementGUI {
     private void setupNavigationItems(Gui gui) {
         // Toggle button
         GuiItem toggleItem = PaperItemBuilder.from(showPlayerInventory ? Material.CHEST : Material.ENDER_CHEST)
-                .name(text("§eToggle View"))
-                .lore(text("§7Currently showing: " + (showPlayerInventory ? "§aPlayer Inventory" : "§dCaravan Inventory")),
-                      text("§7Click to switch to " + (showPlayerInventory ? "§dCaravan Inventory" : "§aPlayer Inventory")))
+                .name(TranslationUtil.translatable("gui.toggle.view").color(NamedTextColor.YELLOW))
+                .lore(TranslationUtil.translatable("gui.currently.showing", (showPlayerInventory ? TranslationUtil.translate("gui.player.inventory") : TranslationUtil.translate("gui.caravan.inventory"))).color(NamedTextColor.GRAY),
+                      TranslationUtil.translatable("gui.click.switch", (showPlayerInventory ? TranslationUtil.translate("gui.caravan.inventory") : TranslationUtil.translate("gui.player.inventory"))).color(NamedTextColor.GRAY))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     showPlayerInventory = !showPlayerInventory;
@@ -78,21 +80,21 @@ public class CaravanInventoryManagementGUI {
         
         // Control buttons
         GuiItem helpItem = PaperItemBuilder.from(Material.BOOK)
-                .name(text("§bHow to Use"))
-                .lore(text("§7Player Inventory View:"),
-                      text("§7- Left-click item: Deposit 1"),
-                      text("§7- Shift+Left-click: Deposit all"),
-                      text("§7- Right-click: Deposit half"),
-                      text(""),
-                      text("§7Caravan Inventory View:"),
-                      text("§7- Left-click item: Withdraw 1"),
-                      text("§7- Shift+Left-click: Withdraw all"),
-                      text("§7- Right-click: Withdraw half"))
+                .name(TranslationUtil.translatable("gui.how.to.use").color(NamedTextColor.AQUA))
+                .lore(TranslationUtil.translatable("gui.player.view.instructions").color(NamedTextColor.GRAY),
+                      TranslationUtil.translatable("gui.player.view.left.click").color(NamedTextColor.GRAY),
+                      TranslationUtil.translatable("gui.player.view.shift.click").color(NamedTextColor.GRAY),
+                      TranslationUtil.translatable("gui.player.view.right.click").color(NamedTextColor.GRAY),
+                      Component.empty(),
+                      TranslationUtil.translatable("gui.caravan.view.instructions").color(NamedTextColor.GRAY),
+                      TranslationUtil.translatable("gui.caravan.view.left.click").color(NamedTextColor.GRAY),
+                      TranslationUtil.translatable("gui.caravan.view.shift.click").color(NamedTextColor.GRAY),
+                      TranslationUtil.translatable("gui.caravan.view.right.click").color(NamedTextColor.GRAY))
                 .asGuiItem(event -> event.setCancelled(true));
         gui.setItem(49, helpItem);
         
         GuiItem backItem = PaperItemBuilder.from(Material.ARROW)
-                .name(text("§7← Back"))
+                .name(TranslationUtil.translatable("gui.back.arrow").color(NamedTextColor.GRAY))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     CaravanManagementGUI managementGUI = new CaravanManagementGUI(caravanManager, player);
@@ -101,7 +103,7 @@ public class CaravanInventoryManagementGUI {
         gui.setItem(45, backItem);
         
         GuiItem closeItem = PaperItemBuilder.from(Material.BARRIER)
-                .name(text("§cClose"))
+                .name(TranslationUtil.translatable("gui.close").color(NamedTextColor.RED))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     player.closeInventory();
@@ -147,8 +149,8 @@ public class CaravanInventoryManagementGUI {
         
         if (itemCount == 0) {
             GuiItem emptyItem = PaperItemBuilder.from(Material.BARRIER)
-                    .name(text("§7No Items"))
-                    .lore(text("§7Your inventory is empty or contains no items"))
+                    .name(TranslationUtil.translatable("gui.no.items").color(NamedTextColor.GRAY))
+                    .lore(TranslationUtil.translatable("gui.inventory.empty").color(NamedTextColor.GRAY))
                     .asGuiItem(event -> event.setCancelled(true));
             gui.setItem(22, emptyItem);
         }
@@ -160,9 +162,9 @@ public class CaravanInventoryManagementGUI {
         int maxSlots = Caravan.MAX_INVENTORY_SLOTS;
         
         GuiItem infoItem = PaperItemBuilder.from(Material.CHEST)
-                .name(text("§aPlayer Inventory"))
-                .lore(text("§7Click items to deposit them into the caravan"),
-                      text("§7Caravan slots: §e" + usedSlots + "/" + maxSlots + (usedSlots >= maxSlots ? " §c(FULL)" : "")))
+                .name(TranslationUtil.translatable("gui.player.inventory.label").color(NamedTextColor.GREEN))
+                .lore(TranslationUtil.translatable("gui.deposit.instruction").color(NamedTextColor.GRAY),
+                      TranslationUtil.translatable("gui.slots.usage", String.valueOf(usedSlots), String.valueOf(maxSlots), (usedSlots >= maxSlots ? TranslationUtil.translate("gui.slots.full") : "")).color(NamedTextColor.GRAY))
                 .asGuiItem(event -> event.setCancelled(true));
         gui.setItem(0, infoItem);
     }
@@ -204,16 +206,16 @@ public class CaravanInventoryManagementGUI {
         
         if (currentCaravan.getItemInventory().isEmpty()) {
             GuiItem emptyItem = PaperItemBuilder.from(Material.BARRIER)
-                    .name(text("§7No Items"))
-                    .lore(text("§7Caravan inventory is empty"))
+                    .name(TranslationUtil.translatable("gui.no.items").color(NamedTextColor.GRAY))
+                    .lore(TranslationUtil.translatable("gui.caravan.empty").color(NamedTextColor.GRAY))
                     .asGuiItem(event -> event.setCancelled(true));
             gui.setItem(22, emptyItem);
         }
         
         // Info header
         GuiItem infoItem = PaperItemBuilder.from(Material.ENDER_CHEST)
-                .name(text("§dCaravan Inventory"))
-                .lore(text("§7Click items to withdraw them to your inventory"))
+                .name(TranslationUtil.translatable("gui.caravan.inventory.label").color(NamedTextColor.LIGHT_PURPLE))
+                .lore(TranslationUtil.translatable("gui.withdraw.instruction").color(NamedTextColor.GRAY))
                 .asGuiItem(event -> event.setCancelled(true));
         gui.setItem(0, infoItem);
     }
@@ -247,7 +249,7 @@ public class CaravanInventoryManagementGUI {
             String itemName = itemStack.hasItemMeta() && itemStack.getItemMeta().hasDisplayName() 
                     ? itemStack.getItemMeta().getDisplayName() 
                     : itemStack.getType().name().toLowerCase().replace('_', ' ');
-            player.sendMessage("§aDeposited §e" + amount + " §f" + itemName + " §ainto caravan.");
+            player.sendMessage(TranslationUtil.translate("inventory.deposited", String.valueOf(amount), itemName));
             // Refresh GUI with slight delay to allow inventory sync
             org.bukkit.Bukkit.getScheduler().runTaskLater(
                 net.mysterria.silkroad.SilkRoad.getInstance(), 
@@ -260,12 +262,12 @@ public class CaravanInventoryManagementGUI {
             if (optionalCaravan.isPresent()) {
                 Caravan currentCaravan = optionalCaravan.get();
                 if (!currentCaravan.canAddItemStack(toDeposit)) {
-                    player.sendMessage("§cCaravan inventory is full! (§e" + currentCaravan.getItemInventory().size() + "/" + net.mysterria.silkroad.domain.caravan.model.Caravan.MAX_INVENTORY_SLOTS + " slots used§c)");
+                    player.sendMessage(TranslationUtil.translate("inventory.full", String.valueOf(currentCaravan.getItemInventory().size()), String.valueOf(net.mysterria.silkroad.domain.caravan.model.Caravan.MAX_INVENTORY_SLOTS)));
                 } else {
-                    player.sendMessage("§cFailed to deposit items. Check that you have enough items in your inventory.");
+                    player.sendMessage(TranslationUtil.translate("inventory.deposit.failed"));
                 }
             } else {
-                player.sendMessage("§cFailed to deposit items. Check that you have enough items in your inventory.");
+                player.sendMessage(TranslationUtil.translate("inventory.deposit.failed"));
             }
         }
     }
@@ -295,7 +297,7 @@ public class CaravanInventoryManagementGUI {
             String itemName = itemStack.hasItemMeta() && itemStack.getItemMeta().hasDisplayName() 
                     ? itemStack.getItemMeta().getDisplayName() 
                     : itemStack.getType().name().toLowerCase().replace('_', ' ');
-            player.sendMessage("§aWithdrew §e" + amount + " §f" + itemName + " §afrom caravan.");
+            player.sendMessage(TranslationUtil.translate("inventory.withdrew", String.valueOf(amount), itemName));
             // Refresh GUI with slight delay to allow inventory sync
             org.bukkit.Bukkit.getScheduler().runTaskLater(
                 net.mysterria.silkroad.SilkRoad.getInstance(), 
@@ -303,7 +305,7 @@ public class CaravanInventoryManagementGUI {
                 1L
             );
         } else {
-            player.sendMessage("§cFailed to withdraw items. Check that you have enough inventory space.");
+            player.sendMessage(TranslationUtil.translate("inventory.withdraw.failed"));
         }
     }
     

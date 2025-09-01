@@ -8,6 +8,8 @@ import net.mysterria.silkroad.SilkRoad;
 import net.mysterria.silkroad.domain.caravan.gui.TransferClaimGUI;
 import net.mysterria.silkroad.domain.caravan.manager.CaravanManager;
 import net.mysterria.silkroad.domain.caravan.model.ResourceTransfer;
+import net.mysterria.silkroad.utils.TranslationUtil;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -32,8 +34,8 @@ public class CaravanPlayerCommand {
     
     @Execute(name = "manage")
     public void manageCommand(@Context Player sender) {
-        sender.sendMessage("§6✨ Opening Caravan Management GUI...");
-        sender.sendMessage("§7All caravan interactions are now available through the intuitive GUI interface!");
+        sender.sendMessage(TranslationUtil.translate("player.gui.opening"));
+        sender.sendMessage(TranslationUtil.translate("player.gui.interface"));
         net.mysterria.silkroad.domain.caravan.gui.CaravanManagementGUI gui = 
                 new net.mysterria.silkroad.domain.caravan.gui.CaravanManagementGUI(caravanManager, sender);
         gui.open();
@@ -41,11 +43,11 @@ public class CaravanPlayerCommand {
     
     @Execute(name = "add")
     public void addItemGUIRedirect(@Context Player sender) {
-        sender.sendMessage("§e➜ Item management is now done through GUIs!");
-        sender.sendMessage("§7Use §f/caravan §7to open the management interface, then:");
-        sender.sendMessage("§7• Click a caravan to manage");
-        sender.sendMessage("§7• Select '§6Manage Inventory§7' for deposit/withdraw");
-        sender.sendMessage("§7• Full NBT support with visual feedback!");
+        sender.sendMessage(TranslationUtil.translate("player.gui.management"));
+        sender.sendMessage(TranslationUtil.translate("player.gui.instructions.header"));
+        sender.sendMessage(TranslationUtil.translate("player.gui.instructions.1"));
+        sender.sendMessage(TranslationUtil.translate("player.gui.instructions.2"));
+        sender.sendMessage(TranslationUtil.translate("player.gui.instructions.3"));
         
         net.mysterria.silkroad.domain.caravan.gui.CaravanManagementGUI gui = 
                 new net.mysterria.silkroad.domain.caravan.gui.CaravanManagementGUI(caravanManager, sender);
@@ -54,11 +56,11 @@ public class CaravanPlayerCommand {
     
     @Execute(name = "take")
     public void takeItemGUIRedirect(@Context Player sender) {
-        sender.sendMessage("§e➜ Item management is now done through GUIs!");
-        sender.sendMessage("§7Use §f/caravan §7to open the management interface, then:");
-        sender.sendMessage("§7• Click a caravan to manage");
-        sender.sendMessage("§7• Select '§6Manage Inventory§7' for deposit/withdraw");
-        sender.sendMessage("§7• Full NBT support with visual feedback!");
+        sender.sendMessage(TranslationUtil.translate("player.gui.management"));
+        sender.sendMessage(TranslationUtil.translate("player.gui.instructions.header"));
+        sender.sendMessage(TranslationUtil.translate("player.gui.instructions.1"));
+        sender.sendMessage(TranslationUtil.translate("player.gui.instructions.2"));
+        sender.sendMessage(TranslationUtil.translate("player.gui.instructions.3"));
         
         net.mysterria.silkroad.domain.caravan.gui.CaravanManagementGUI gui = 
                 new net.mysterria.silkroad.domain.caravan.gui.CaravanManagementGUI(caravanManager, sender);
@@ -67,7 +69,7 @@ public class CaravanPlayerCommand {
     
     @Execute(name = "inventory")
     public void inventoryCommand(@Context Player sender) {
-        sender.sendMessage("§e➜ Opening inventory management interface...");
+        sender.sendMessage(TranslationUtil.translate("player.inventory.opening"));
         net.mysterria.silkroad.domain.caravan.gui.CaravanManagementGUI gui = 
                 new net.mysterria.silkroad.domain.caravan.gui.CaravanManagementGUI(caravanManager, sender);
         gui.open();
@@ -75,11 +77,11 @@ public class CaravanPlayerCommand {
     
     @Execute(name = "send")
     public void sendCommand(@Context Player sender) {
-        sender.sendMessage("§e➜ Transfer creation is now done through GUIs!");
-        sender.sendMessage("§7Use §f/caravan §7to open management, then:");
-        sender.sendMessage("§7• Click a caravan you own");
-        sender.sendMessage("§7• Select '§6Send Resources§7'");
-        sender.sendMessage("§7• Choose destination and items with full NBT support!");
+        sender.sendMessage(TranslationUtil.translate("player.transfer.gui"));
+        sender.sendMessage(TranslationUtil.translate("player.transfer.instructions.header"));
+        sender.sendMessage(TranslationUtil.translate("player.transfer.instructions.1"));
+        sender.sendMessage(TranslationUtil.translate("player.transfer.instructions.2"));
+        sender.sendMessage(TranslationUtil.translate("player.transfer.instructions.3"));
         
         net.mysterria.silkroad.domain.caravan.gui.CaravanManagementGUI gui = 
                 new net.mysterria.silkroad.domain.caravan.gui.CaravanManagementGUI(caravanManager, sender);
@@ -92,26 +94,24 @@ public class CaravanPlayerCommand {
                        @Arg("material") Material material, @Arg("amount") int amount) {
         
         if (amount <= 0) {
-            sender.sendMessage("§cAmount must be greater than 0.");
+            sender.sendMessage(TranslationUtil.translate("player.amount.must.be.positive"));
             return;
         }
         
         if (amount > 64000) {
-            sender.sendMessage("§cAmount cannot exceed 64000.");
+            sender.sendMessage(TranslationUtil.translate("player.amount.too.large"));
             return;
         }
         
-        sender.sendMessage("§c⚠ DEPRECATED: This command will be removed in future versions!");
-        sender.sendMessage("§7Please use §f/caravan §7to access the modern GUI interface with full NBT support.");
+        sender.sendMessage(TranslationUtil.translate("player.deprecated.warning"));
+        sender.sendMessage(TranslationUtil.translate("player.deprecated.use.gui"));
         
         if (caravanManager.addItemToCaravan(caravanId, sender, material, amount)) {
-            sender.sendMessage("§aAdded §e" + amount + " §f" + 
-                    material.name().toLowerCase().replace('_', ' ') + 
-                    " §ato caravan §d" + caravanId + "§a.");
+            sender.sendMessage(TranslationUtil.translate("player.items.added", String.valueOf(amount), material.name().toLowerCase().replace('_', ' '), caravanId));
         } else {
-            sender.sendMessage("§cFailed to add items. Check that:");
-            sender.sendMessage("§c- The caravan exists and you have access");
-            sender.sendMessage("§c- You have enough items in your inventory");
+            sender.sendMessage(TranslationUtil.translate("player.items.add.failed.header"));
+            sender.sendMessage(TranslationUtil.translate("player.items.add.failed.1"));
+            sender.sendMessage(TranslationUtil.translate("player.items.add.failed.2"));
         }
     }
     
@@ -120,22 +120,20 @@ public class CaravanPlayerCommand {
                           @Arg("material") Material material, @Arg("amount") int amount) {
         
         if (amount <= 0) {
-            sender.sendMessage("§cAmount must be greater than 0.");
+            sender.sendMessage(TranslationUtil.translate("player.amount.must.be.positive"));
             return;
         }
         
-        sender.sendMessage("§c⚠ DEPRECATED: This command will be removed in future versions!");
-        sender.sendMessage("§7Please use §f/caravan §7to access the modern GUI interface with full NBT support.");
+        sender.sendMessage(TranslationUtil.translate("player.deprecated.warning"));
+        sender.sendMessage(TranslationUtil.translate("player.deprecated.use.gui"));
         
         if (caravanManager.removeItemFromCaravan(caravanId, sender, material, amount)) {
-            sender.sendMessage("§aTook §e" + amount + " §f" + 
-                    material.name().toLowerCase().replace('_', ' ') + 
-                    " §afrom caravan §d" + caravanId + "§a.");
+            sender.sendMessage(TranslationUtil.translate("player.items.took", String.valueOf(amount), material.name().toLowerCase().replace('_', ' '), caravanId));
         } else {
-            sender.sendMessage("§cFailed to take items. Check that:");
-            sender.sendMessage("§c- The caravan exists and you have access");
-            sender.sendMessage("§c- The caravan has enough items");
-            sender.sendMessage("§c- You have enough inventory space");
+            sender.sendMessage(TranslationUtil.translate("player.items.take.failed.header"));
+            sender.sendMessage(TranslationUtil.translate("player.items.take.failed.1"));
+            sender.sendMessage(TranslationUtil.translate("player.items.take.failed.2"));
+            sender.sendMessage(TranslationUtil.translate("player.items.take.failed.3"));
         }
     }
     
@@ -150,10 +148,10 @@ public class CaravanPlayerCommand {
         List<ResourceTransfer> playerTransfers = caravanManager.getPlayerTransfers(sender.getUniqueId());
         List<ResourceTransfer> deliveredTransfers = caravanManager.getDeliveredTransfersForPlayer(sender.getUniqueId());
         
-        sender.sendMessage("§6=== Your Transfers ===");
+        sender.sendMessage(TranslationUtil.translate("player.transfers.header"));
         
         if (playerTransfers.isEmpty() && deliveredTransfers.isEmpty()) {
-            sender.sendMessage("§7You have no active or delivered transfers.");
+            sender.sendMessage(TranslationUtil.translate("player.transfers.none"));
             return;
         }
         
@@ -162,7 +160,7 @@ public class CaravanPlayerCommand {
         for (ResourceTransfer transfer : playerTransfers) {
             if (transfer.getStatus() != ResourceTransfer.TransferStatus.DELIVERED) {
                 if (activeCount == 0) {
-                    sender.sendMessage("§e§lActive Transfers:");
+                    sender.sendMessage(TranslationUtil.translate("player.transfers.active.header"));
                 }
                 activeCount++;
                 
@@ -170,37 +168,35 @@ public class CaravanPlayerCommand {
                 String timeLeft = transfer.getRemainingTime() > 0 ? 
                         " §7(§f" + formatTime(transfer.getRemainingTime()) + " remaining§7)" : " §a(Ready)";
                 
-                sender.sendMessage("§7" + activeCount + ". §f" + transfer.getSourceCaravanId() + 
-                        " §7→ §f" + transfer.getDestinationCaravanId() + " §7- " + status + timeLeft);
+                sender.sendMessage(TranslationUtil.translate("player.transfers.active.format", String.valueOf(activeCount), transfer.getSourceCaravanId(), transfer.getDestinationCaravanId(), formatTime(transfer.getRemainingTime())));
             }
         }
         
         // Show delivered transfers
         if (!deliveredTransfers.isEmpty()) {
-            sender.sendMessage("§a§lDelivered Transfers §7(" + deliveredTransfers.size() + " awaiting claim):");
+            sender.sendMessage(TranslationUtil.translate("player.transfers.delivered.header", String.valueOf(deliveredTransfers.size())));
             for (int i = 0; i < Math.min(deliveredTransfers.size(), 5); i++) {
                 ResourceTransfer transfer = deliveredTransfers.get(i);
-                sender.sendMessage("§7" + (i + 1) + ". §f" + transfer.getSourceCaravanId() + 
-                        " §7→ §f" + transfer.getDestinationCaravanId() + " §a(Ready to claim)");
+                sender.sendMessage(TranslationUtil.translate("player.transfers.delivered.format", String.valueOf(i + 1), transfer.getSourceCaravanId(), transfer.getDestinationCaravanId()));
             }
             
             if (deliveredTransfers.size() > 5) {
-                sender.sendMessage("§7... and " + (deliveredTransfers.size() - 5) + " more");
+                sender.sendMessage(TranslationUtil.translate("player.transfers.more", String.valueOf(deliveredTransfers.size() - 5)));
             }
             
-            sender.sendMessage("§eUse §f/caravan transfers §eto open the claim GUI");
+            sender.sendMessage(TranslationUtil.translate("player.transfers.gui.hint"));
         }
     }
     
     @Execute(name = "claim")
     public void claimTransfer(@Context Player sender, @Arg("transferId") String transferId) {
         if (caravanManager.claimTransferToInventory(transferId, sender)) {
-            sender.sendMessage("§a✓ Transfer claimed to your inventory!");
+            sender.sendMessage(TranslationUtil.translate("player.transfer.claimed"));
         } else {
-            sender.sendMessage("§cFailed to claim transfer. Make sure:");
-            sender.sendMessage("§c- The transfer ID is correct");
-            sender.sendMessage("§c- The transfer is delivered and ready to claim");
-            sender.sendMessage("§c- You have enough inventory space");
+            sender.sendMessage(TranslationUtil.translate("player.transfer.claim.failed.header"));
+            sender.sendMessage(TranslationUtil.translate("player.transfer.claim.failed.1"));
+            sender.sendMessage(TranslationUtil.translate("player.transfer.claim.failed.2"));
+            sender.sendMessage(TranslationUtil.translate("player.transfer.claim.failed.3"));
         }
     }
     
@@ -216,7 +212,7 @@ public class CaravanPlayerCommand {
     private String formatTime(long timeMillis) {
         long seconds = timeMillis / 1000;
         if (seconds <= 0) {
-            return "Ready";
+            return TranslationUtil.translate("time.ready");
         } else if (seconds < 60) {
             return seconds + "s";
         } else if (seconds < 3600) {
