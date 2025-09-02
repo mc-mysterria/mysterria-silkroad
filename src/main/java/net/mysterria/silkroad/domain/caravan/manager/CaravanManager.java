@@ -257,7 +257,6 @@ public class CaravanManager {
             return null;
         }
         
-        // Check if source caravan has enough resources
         for (Map.Entry<Material, Integer> entry : resources.entrySet()) {
             if (source.getResourceAmount(entry.getKey()) < entry.getValue()) {
                 return null;
@@ -267,13 +266,11 @@ public class CaravanManager {
         double distance = source.distanceTo(destination);
         int cost = calculateTransferCostLegacy(distance, resources);
         
-        // Check if player has enough shards to pay for the transfer
-        if (ShardUtils.getTotalPlayerShards(player) < cost) {
+        if (SilkRoad.getInstance().getShardUtils().getTotalPlayerShards(player) < cost) {
             return null; // Not enough shards
         }
         
-        // Consume shards from player's inventory
-        if (!ShardUtils.consumeShards(player, cost)) {
+        if (!SilkRoad.getInstance().getShardUtils().consumeShards(player, cost)) {
             return null; // Failed to consume shards
         }
         
@@ -283,7 +280,6 @@ public class CaravanManager {
         ResourceTransfer transfer = new ResourceTransfer(transferId, sourceCaravanId, destinationCaravanId, 
                 player, resources, distance, cost, deliveryTime);
         
-        // Remove resources from source caravan
         for (Map.Entry<Material, Integer> entry : resources.entrySet()) {
             source.removeResource(entry.getKey(), entry.getValue());
         }

@@ -2,6 +2,8 @@ package net.mysterria.silkroad;
 
 import dev.rollczi.litecommands.LiteCommands;
 import dev.rollczi.litecommands.bukkit.LiteBukkitFactory;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import net.mysterria.silkroad.commands.CaravanCommand;
 import net.mysterria.silkroad.commands.CaravanPlayerCommand;
 import net.mysterria.silkroad.config.SilkRoadConfig;
@@ -9,9 +11,8 @@ import net.mysterria.silkroad.domain.caravan.manager.CaravanManager;
 import net.mysterria.silkroad.listeners.CaravanInteractionListener;
 import net.mysterria.silkroad.listeners.CaravanWandListener;
 import net.mysterria.silkroad.listeners.TownMembershipListener;
+import net.mysterria.silkroad.utils.ShardUtils;
 import net.mysterria.silkroad.utils.TranslationManager;
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -26,10 +27,9 @@ public final class SilkRoad extends JavaPlugin {
 
     @Getter
     private static SilkRoad instance;
-    
-    public SilkRoadConfig getPluginConfig() {
-        return pluginConfig;
-    }
+
+    @Getter
+    private ShardUtils shardUtils;
 
     @Override
     public void onEnable() {
@@ -37,20 +37,22 @@ public final class SilkRoad extends JavaPlugin {
 
         createDataFolders();
         this.pluginConfig = new SilkRoadConfig();
-        
+
         // Initialize translation system
         TranslationManager.initialize();
-        
+
         this.caravanManager = new CaravanManager();
-        
+
         Bukkit.getPluginManager().registerEvents(new CaravanInteractionListener(caravanManager), this);
         Bukkit.getPluginManager().registerEvents(new CaravanWandListener(caravanManager), this);
         Bukkit.getPluginManager().registerEvents(new TownMembershipListener(caravanManager), this);
 
+        this.shardUtils = new ShardUtils();
+
         this.liteCommands = LiteBukkitFactory.builder("silkroad", this)
                 .commands(new CaravanCommand(this), new CaravanPlayerCommand(this))
                 .build();
-                
+
         getLogger().info("SilkRoad caravan system enabled successfully!");
     }
 
@@ -62,7 +64,7 @@ public final class SilkRoad extends JavaPlugin {
         if (new java.io.File(getDataFolder(), "caravans").mkdirs()) {
             getLogger().info("Created caravans directory");
         }
-        
+
         if (new java.io.File(getDataFolder(), "transfers").mkdirs()) {
             getLogger().info("Created transfers directory");
         }
@@ -85,7 +87,7 @@ public final class SilkRoad extends JavaPlugin {
         if (this.liteCommands != null) {
             this.liteCommands.unregister();
         }
-        
+
         getLogger().info("SilkRoad disabled successfully!");
     }
 }

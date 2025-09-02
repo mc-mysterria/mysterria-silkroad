@@ -5,6 +5,7 @@ api-version: '1.21'
 prefix: SilkRoad
 authors: [ Djecka1337 ]
 description: A caravan trading system with distance-based resource transfers
+depends: [ SacredOrder ]
 commands:
   silkroad:
     description: SilkRoad caravan administration

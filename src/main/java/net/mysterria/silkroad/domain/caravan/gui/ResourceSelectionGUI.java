@@ -7,6 +7,7 @@ import dev.triumphteam.gui.guis.PaginatedGui;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import net.mysterria.silkroad.SilkRoad;
 import net.mysterria.silkroad.domain.caravan.manager.CaravanManager;
 import net.mysterria.silkroad.domain.caravan.model.Caravan;
 import net.mysterria.silkroad.domain.caravan.model.ResourceTransfer;
@@ -175,9 +176,9 @@ public class ResourceSelectionGUI {
         lore.add(TranslationUtil.translatable("item.destination", NamedTextColor.WHITE, destinationCaravan.getName()).decoration(TextDecoration.ITALIC, false));
         lore.add(TranslationUtil.translatable("item.distance", NamedTextColor.WHITE, String.format("%.1f blocks", distance)).decoration(TextDecoration.ITALIC, false));
         lore.add(TranslationUtil.translatable("item.total.cost", NamedTextColor.WHITE, ShardUtils.formatShardCost(totalCost)).decoration(TextDecoration.ITALIC, false));
-        lore.add(TranslationUtil.translatable("item.your.shards", 
-                ShardUtils.getTotalPlayerShards(player) >= totalCost ? NamedTextColor.GREEN : NamedTextColor.RED, 
-                ShardUtils.getTotalPlayerShards(player))
+        lore.add(TranslationUtil.translatable("item.your.shards",
+                        SilkRoad.getInstance().getShardUtils().getTotalPlayerShards(player) >= totalCost ? NamedTextColor.GREEN : NamedTextColor.RED,
+                        SilkRoad.getInstance().getShardUtils().getTotalPlayerShards(player))
                 .decoration(TextDecoration.ITALIC, false));
         lore.add(TranslationUtil.translatable("item.delivery.time", NamedTextColor.WHITE, formatTime(deliveryTime)).decoration(TextDecoration.ITALIC, false));
         lore.add(Component.empty());
@@ -238,7 +239,7 @@ public class ResourceSelectionGUI {
         } else {
             double distance = sourceCaravan.distanceTo(destinationCaravan);
             int totalCost = calculateTotalCost(distance, selectedResources);
-            int playerShards = ShardUtils.getTotalPlayerShards(player);
+            int playerShards = SilkRoad.getInstance().getShardUtils().getTotalPlayerShards(player);
             
             if (playerShards < totalCost) {
                 player.sendMessage("§cNot enough shards! You need " + ShardUtils.formatShardCost(totalCost) + " but only have " + ShardUtils.formatShardCost(playerShards));
