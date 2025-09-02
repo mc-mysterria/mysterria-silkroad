@@ -227,6 +227,26 @@ public class CaravanCommand {
         }
     }
 
+    @Execute(name = "refreshmembers")
+    public void refreshMembers(@Context CommandSender sender) {
+        int refreshedCount = caravanManager.refreshAllCaravanMembersFromTowns();
+        if (refreshedCount > 0) {
+            sender.sendMessage(Component.text("✓ Refreshed member lists for " + refreshedCount + " caravans from their towns.", NamedTextColor.GREEN));
+        } else {
+            sender.sendMessage(Component.text("No caravans were refreshed. Either no caravans are owned by towns or HuskTowns is not available.", NamedTextColor.YELLOW));
+        }
+    }
+
+    @Execute(name = "refreshmembers")
+    public void refreshMembersForCaravan(@Context CommandSender sender, @Arg String caravanId) {
+        boolean refreshed = caravanManager.refreshCaravanMembersFromTown(caravanId);
+        if (refreshed) {
+            sender.sendMessage(Component.text("✓ Refreshed member list for caravan '" + caravanId + "' from its town.", NamedTextColor.GREEN));
+        } else {
+            sender.sendMessage(Component.text("Could not refresh caravan '" + caravanId + "'. Either it doesn't exist, is not owned by a town, or HuskTowns is not available.", NamedTextColor.RED));
+        }
+    }
+
     private String formatTime(long millis) {
         if (millis <= 0) return TranslationUtil.translate("time.ready");
 

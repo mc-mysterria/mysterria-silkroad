@@ -909,6 +909,74 @@ public class CaravanManager {
         storage.saveCaravan(caravan);
     }
     
+    /**
+     * Refreshes a caravan's member list from its owning town (if it has one)
+     * @param caravanId The caravan ID to refresh members for
+     * @return true if members were refreshed, false if not (no town or HuskTowns unavailable)
+     */
+    public boolean refreshCaravanMembersFromTown(String caravanId) {
+        Caravan caravan = caravans.get(caravanId);
+        if (caravan == null || caravan.getOwningTownId() == -1) {
+            return false;
+        }
+        
+        return refreshCaravanMembersFromTown(caravan);
+    }
+    
+    /**
+     * Refreshes a caravan's member list from its owning town (if it has one)
+     * @param caravan The caravan to refresh members for
+     * @return true if members were refreshed, false if not (no town or HuskTowns unavailable)
+     */
+    public boolean refreshCaravanMembersFromTown(Caravan caravan) {
+        if (!HuskTownsIntegration.isAvailable() || caravan.getOwningTownId() == -1) {
+            return false;
+        }
+        
+        try {
+            Set<UUID> townMembers = HuskTownsIntegration.getTownMemberUUIDs(caravan.getOwningTownId());
+            
+            // Clear current members and add all town members
+            caravan.getMembers().clear();
+            for (UUID memberUuid : townMembers) {
+                caravan.addMember(memberUuid);
+            }
+            
+            // Save the updated caravan
+            saveCaravan(caravan);
+            
+            logger.info("Refreshed members for caravan " + caravan.getName() + 
+                      " from town " + caravan.getOwningTownName() + 
+                      " (" + townMembers.size() + " members)");
+            
+            return true;
+        } catch (Exception e) {
+            logger.warning("Error refreshing caravan members from town: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Refreshes all caravans' member lists from their owning towns
+     * @return the number of caravans that were refreshed
+     */
+    public int refreshAllCaravanMembersFromTowns() {
+        if (!HuskTownsIntegration.isAvailable()) {
+            logger.info("HuskTowns not available - cannot refresh caravan members");
+            return 0;
+        }
+        
+        int refreshedCount = 0;
+        for (Caravan caravan : caravans.values()) {
+            if (refreshCaravanMembersFromTown(caravan)) {
+                refreshedCount++;
+            }
+        }
+        
+        logger.info("Refreshed member lists for " + refreshedCount + " caravans from their towns");
+        return refreshedCount;
+    }
+    
     public void shutdown() {
         if (transferProcessor != null) {
             transferProcessor.cancel();

@@ -443,17 +443,6 @@ public class ResourceTransferGUI {
                 });
         gui.setItem(42, confirmItem);
         
-        // Edit selection button (goes back to manual selection)
-        GuiItem editItem = PaperItemBuilder.from(Material.YELLOW_CONCRETE)
-                .name(text("§e§lEDIT SELECTION"))
-                .lore(text("§7Click to manually adjust items"),
-                      text("§7Opens the detailed selection GUI"))
-                .asGuiItem(event -> {
-                    event.setCancelled(true);
-                    showDetailedSelection();
-                });
-        gui.setItem(44, editItem);
-        
         // Back button
         GuiItem backItem = PaperItemBuilder.from(Material.ARROW)
                 .name(text("§7← Back"))
@@ -473,16 +462,6 @@ public class ResourceTransferGUI {
                 });
         gui.setItem(49, closeItem);
         
-        gui.open(player);
-    }
-    
-    private void showDetailedSelection() {
-        Gui gui = Gui.gui()
-                .title(text("§6Edit Transfer Selection"))
-                .rows(6)
-                .create();
-        
-        setupResourceSelection(gui);
         gui.open(player);
     }
 }

@@ -8,6 +8,7 @@ import net.mysterria.silkroad.config.SilkRoadConfig;
 import net.mysterria.silkroad.domain.caravan.manager.CaravanManager;
 import net.mysterria.silkroad.listeners.CaravanInteractionListener;
 import net.mysterria.silkroad.listeners.CaravanWandListener;
+import net.mysterria.silkroad.listeners.TownMembershipListener;
 import net.mysterria.silkroad.utils.TranslationManager;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -44,6 +45,7 @@ public final class SilkRoad extends JavaPlugin {
         
         Bukkit.getPluginManager().registerEvents(new CaravanInteractionListener(caravanManager), this);
         Bukkit.getPluginManager().registerEvents(new CaravanWandListener(caravanManager), this);
+        Bukkit.getPluginManager().registerEvents(new TownMembershipListener(caravanManager), this);
 
         this.liteCommands = LiteBukkitFactory.builder("silkroad", this)
                 .commands(new CaravanCommand(this), new CaravanPlayerCommand(this))
