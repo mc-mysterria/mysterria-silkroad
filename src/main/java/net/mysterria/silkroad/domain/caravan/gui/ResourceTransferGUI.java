@@ -3,6 +3,7 @@ package net.mysterria.silkroad.domain.caravan.gui;
 import dev.triumphteam.gui.builder.item.PaperItemBuilder;
 import dev.triumphteam.gui.guis.Gui;
 import dev.triumphteam.gui.guis.GuiItem;
+import net.kyori.adventure.text.format.TextDecoration;
 import net.mysterria.silkroad.SilkRoad;
 import net.mysterria.silkroad.config.SilkRoadConfig;
 import net.mysterria.silkroad.domain.caravan.manager.CaravanManager;
@@ -142,7 +143,7 @@ public class ResourceTransferGUI {
         gui.setItem(44, clearItem);
         
         GuiItem backItem = PaperItemBuilder.from(Material.ARROW)
-                .name(text("§7← Back"))
+                .name(TranslationUtil.translatable("gui.back.arrow").color(NamedTextColor.GRAY))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     CaravanManagementGUI managementGUI = new CaravanManagementGUI(caravanManager, player);
@@ -151,7 +152,7 @@ public class ResourceTransferGUI {
         gui.setItem(45, backItem);
         
         GuiItem closeItem = PaperItemBuilder.from(Material.BARRIER)
-                .name(text("§cClose"))
+                .name(TranslationUtil.translatable("gui.close").color(NamedTextColor.RED))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     player.closeInventory();
@@ -381,7 +382,7 @@ public class ResourceTransferGUI {
     
     private void showConfirmationPreview() {
         Gui gui = Gui.gui()
-                .title(text("§6Transfer Preview - Confirm Transfer"))
+                .title(TranslationUtil.translatable("gui.transfer.preview.title").color(NamedTextColor.GOLD))
                 .rows(6)
                 .create();
         
@@ -396,28 +397,28 @@ public class ResourceTransferGUI {
             ItemStack displayItem = item.clone();
             displayItem.setAmount(Math.min(amount, 64));
             
-            List<String> lore = new ArrayList<>();
-            lore.add("§a✓ Selected for Transfer");
-            lore.add("§7Amount: §e" + amount);
+            List<Component> lore = new ArrayList<>();
+            lore.add(TranslationUtil.translatable("gui.transfer.selected.for.transfer").color(NamedTextColor.GREEN));
+            lore.add(TranslationUtil.translatable("gui.transfer.amount.selected", String.valueOf(amount)).color(NamedTextColor.GRAY));
             
             // Show NBT preservation info
             if (item.hasItemMeta()) {
-                lore.add("");
-                lore.add("§a✓ NBT Data Will Be Preserved:");
+                lore.add(Component.empty());
+                lore.add(TranslationUtil.translatable("gui.nbt.will.be.preserved").color(NamedTextColor.GREEN));
                 if (item.getItemMeta().hasDisplayName()) {
-                    lore.add("  §b• Custom Name");
+                    lore.add(TranslationUtil.translatable("gui.nbt.custom.name").color(NamedTextColor.AQUA));
                 }
                 if (item.getItemMeta().hasLore()) {
-                    lore.add("  §b• Custom Lore");
+                    lore.add(TranslationUtil.translatable("gui.nbt.custom.lore").color(NamedTextColor.AQUA));
                 }
                 if (item.getItemMeta().hasEnchants()) {
-                    lore.add("  §d• Enchantments");
+                    lore.add(TranslationUtil.translatable("gui.nbt.enchantments").color(NamedTextColor.LIGHT_PURPLE));
                 }
             }
             
             GuiItem guiItem = PaperItemBuilder.from(displayItem)
-                    .name(text("§a" + itemName))
-                    .lore(lore.stream().map(this::text).toArray(Component[]::new))
+                    .name(Component.text(itemName).color(NamedTextColor.GREEN))
+                    .lore(lore.toArray(Component[]::new))
                     .asGuiItem(event -> event.setCancelled(true));
             
             gui.setItem(slot, guiItem);
@@ -426,17 +427,17 @@ public class ResourceTransferGUI {
         
         // Transfer information panel
         GuiItem infoItem = PaperItemBuilder.from(Material.PAPER)
-                .name(text("§6Transfer Details"))
+                .name(TranslationUtil.translatable("gui.transfer.details.title").color(NamedTextColor.GOLD))
                 .lore(createTransferInfo().toArray(Component[]::new))
                 .asGuiItem(event -> event.setCancelled(true));
         gui.setItem(40, infoItem);
         
         // Confirm transfer button
         GuiItem confirmItem = PaperItemBuilder.from(Material.LIME_CONCRETE)
-                .name(text("§a§lCONFIRM TRANSFER"))
-                .lore(text("§7Click to execute the transfer"),
-                      text("§7All inventory will be transferred"),
-                      text("§a§lNBT data will be preserved!"))
+                .name(TranslationUtil.translatable("gui.transfer.confirm.button").color(NamedTextColor.GREEN).decoration(TextDecoration.BOLD, true))
+                .lore(TranslationUtil.translatable("gui.transfer.confirm.click").color(NamedTextColor.GRAY),
+                      TranslationUtil.translatable("gui.transfer.confirm.all.inventory").color(NamedTextColor.GRAY),
+                      TranslationUtil.translatable("gui.transfer.confirm.nbt.preserved").color(NamedTextColor.GREEN).decoration(TextDecoration.BOLD, true))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     executeTransfer();
@@ -445,7 +446,7 @@ public class ResourceTransferGUI {
         
         // Back button
         GuiItem backItem = PaperItemBuilder.from(Material.ARROW)
-                .name(text("§7← Back"))
+                .name(TranslationUtil.translatable("gui.back.arrow").color(NamedTextColor.GRAY))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     CaravanManagementGUI managementGUI = new CaravanManagementGUI(caravanManager, player);
@@ -455,7 +456,7 @@ public class ResourceTransferGUI {
         
         // Close button
         GuiItem closeItem = PaperItemBuilder.from(Material.BARRIER)
-                .name(text("§cClose"))
+                .name(TranslationUtil.translatable("gui.close").color(NamedTextColor.RED))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     player.closeInventory();
