@@ -17,11 +17,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class CaravanInventoryManagementGUI {
-    
+
     private final CaravanManager caravanManager;
     private final Player player;
     private final Caravan caravan;
     private boolean showPlayerInventory = true;
+    private boolean isProcessing = false;
     
     public CaravanInventoryManagementGUI(CaravanManager caravanManager, Player player, Caravan caravan) {
         this.caravanManager = caravanManager;
@@ -34,10 +35,18 @@ public class CaravanInventoryManagementGUI {
                 .title(TranslationUtil.translatable("gui.inventory.management.title", NamedTextColor.GOLD, caravan.getName()))
                 .rows(6)
                 .create();
-        
-        // Only set drag protection - no default click action that interferes with GuiItems
+
+        // Set drag protection
         gui.setDragAction(event -> event.setCancelled(true));
-        
+
+        // Prevent shift-clicking from player's actual inventory into the GUI
+        gui.setDefaultClickAction(event -> {
+            // Cancel all clicks that are not on GuiItems (prevents shift-clicking from player inventory)
+            if (event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory())) {
+                event.setCancelled(true);
+            }
+        });
+
         setupInventoryGUI(gui);
         gui.open(player);
     }
@@ -220,11 +229,16 @@ public class CaravanInventoryManagementGUI {
         gui.setItem(0, infoItem);
     }
     
-    private void handlePlayerItemStackClick(ItemStack itemStack, 
+    private void handlePlayerItemStackClick(ItemStack itemStack,
                                           org.bukkit.event.inventory.ClickType clickType, Gui gui) {
+        // Prevent rapid clicks while processing
+        if (isProcessing) {
+            return;
+        }
+
         int amount = 0;
         int available = itemStack.getAmount();
-        
+
         switch (clickType) {
             case LEFT:
                 amount = 1;
@@ -238,25 +252,33 @@ public class CaravanInventoryManagementGUI {
             default:
                 return;
         }
-        
+
         amount = Math.min(amount, available);
-        
+
         // Create a copy of the itemStack with the desired amount
         ItemStack toDeposit = itemStack.clone();
         toDeposit.setAmount(amount);
-        
+
+        // Set processing flag to prevent rapid clicks
+        isProcessing = true;
+
         if (caravanManager.addItemStackToCaravan(caravan.getId(), player, toDeposit)) {
-            String itemName = itemStack.hasItemMeta() && itemStack.getItemMeta().hasDisplayName() 
-                    ? itemStack.getItemMeta().getDisplayName() 
+            String itemName = itemStack.hasItemMeta() && itemStack.getItemMeta().hasDisplayName()
+                    ? itemStack.getItemMeta().getDisplayName()
                     : itemStack.getType().name().toLowerCase().replace('_', ' ');
             player.sendMessage(TranslationUtil.translate("inventory.deposited", String.valueOf(amount), itemName));
             // Refresh GUI with slight delay to allow inventory sync
             org.bukkit.Bukkit.getScheduler().runTaskLater(
-                net.mysterria.silkroad.SilkRoad.getInstance(), 
-                () -> setupInventoryGUI(gui), 
+                net.mysterria.silkroad.SilkRoad.getInstance(),
+                () -> {
+                    setupInventoryGUI(gui);
+                    isProcessing = false;
+                },
                 1L
             );
         } else {
+            // Reset processing flag on failure
+            isProcessing = false;
             // Check if it's a full inventory issue
             var optionalCaravan = caravanManager.getCaravan(caravan.getId());
             if (optionalCaravan.isPresent()) {
@@ -272,11 +294,16 @@ public class CaravanInventoryManagementGUI {
         }
     }
     
-    private void handleCaravanItemStackClick(ItemStack itemStack, 
+    private void handleCaravanItemStackClick(ItemStack itemStack,
                                            org.bukkit.event.inventory.ClickType clickType, Gui gui) {
+        // Prevent rapid clicks while processing
+        if (isProcessing) {
+            return;
+        }
+
         int amount = 0;
         int available = itemStack.getAmount();
-        
+
         switch (clickType) {
             case LEFT:
                 amount = 1;
@@ -290,21 +317,29 @@ public class CaravanInventoryManagementGUI {
             default:
                 return;
         }
-        
+
         amount = Math.min(amount, available);
-        
+
+        // Set processing flag to prevent rapid clicks
+        isProcessing = true;
+
         if (caravanManager.removeItemStackFromCaravan(caravan.getId(), player, itemStack, amount)) {
-            String itemName = itemStack.hasItemMeta() && itemStack.getItemMeta().hasDisplayName() 
-                    ? itemStack.getItemMeta().getDisplayName() 
+            String itemName = itemStack.hasItemMeta() && itemStack.getItemMeta().hasDisplayName()
+                    ? itemStack.getItemMeta().getDisplayName()
                     : itemStack.getType().name().toLowerCase().replace('_', ' ');
             player.sendMessage(TranslationUtil.translate("inventory.withdrew", String.valueOf(amount), itemName));
             // Refresh GUI with slight delay to allow inventory sync
             org.bukkit.Bukkit.getScheduler().runTaskLater(
-                net.mysterria.silkroad.SilkRoad.getInstance(), 
-                () -> setupInventoryGUI(gui), 
+                net.mysterria.silkroad.SilkRoad.getInstance(),
+                () -> {
+                    setupInventoryGUI(gui);
+                    isProcessing = false;
+                },
                 1L
             );
         } else {
+            // Reset processing flag on failure
+            isProcessing = false;
             player.sendMessage(TranslationUtil.translate("inventory.withdraw.failed"));
         }
     }

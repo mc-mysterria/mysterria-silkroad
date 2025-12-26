@@ -609,7 +609,7 @@ public class CaravanManager {
         
         // Remove items from player inventory
         removeItemStackFromPlayer(player, itemStack);
-        
+
         // Add items to caravan inventory
         boolean added = caravan.addItemStack(itemStack);
         if (!added) {
@@ -617,10 +617,18 @@ public class CaravanManager {
             addItemStackToPlayer(player, itemStack);
             return false;
         }
-        
-        // Save changes
-        storage.saveCaravan(caravan);
-        
+
+        // Save changes with error handling to prevent item loss
+        try {
+            storage.saveCaravan(caravan);
+        } catch (Exception e) {
+            // If save fails, rollback: remove from caravan and return to player
+            logger.severe("Failed to save caravan " + caravanId + " after adding items. Rolling back transaction: " + e.getMessage());
+            caravan.removeItemStack(itemStack, itemStack.getAmount());
+            addItemStackToPlayer(player, itemStack);
+            return false;
+        }
+
         logger.info("Player " + player.getName() + " added " + itemStack.getAmount() + " " + itemStack.getType() + " to caravan " + caravanId);
         return true;
     }
@@ -658,15 +666,25 @@ public class CaravanManager {
         if (!caravan.removeItemStack(itemStack, amount)) {
             return false;
         }
-        
+
         // Add to player inventory
         ItemStack toAdd = itemStack.clone();
         toAdd.setAmount(amount);
         addItemStackToPlayer(player, toAdd);
-        
-        // Save changes
-        storage.saveCaravan(caravan);
-        
+
+        // Save changes with error handling
+        try {
+            storage.saveCaravan(caravan);
+        } catch (Exception e) {
+            // If save fails, rollback: remove from player and return to caravan
+            logger.severe("Failed to save caravan " + caravanId + " after removing items. Rolling back transaction: " + e.getMessage());
+            // Remove from player (best effort - items may have been dropped if inventory full)
+            player.getInventory().removeItem(toAdd);
+            // Add back to caravan
+            caravan.addItemStack(toAdd);
+            return false;
+        }
+
         logger.info("Player " + player.getName() + " removed " + amount + " " + itemStack.getType() + " from caravan " + caravanId);
         return true;
     }
