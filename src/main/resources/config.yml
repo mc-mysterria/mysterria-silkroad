@@ -3,12 +3,14 @@
 # Transfer cost calculation settings
 transfer:
   cost:
-    # Cost per block distance (0.1 = 10 diamonds per 100 blocks)
-    distance_cost_per_block: 0.1
-    # Cost per item stack being transferred (regardless of stack size)
-    stack_cost: 2.0
+    # Cost per block distance (0.05 = 5 diamonds per 100 blocks) - 50% cheaper than before
+    distance_cost_per_block: 0.05
+    # Cost per item stack being transferred (regardless of stack size) - 50% cheaper than before
+    stack_cost: 1.0
     # Minimum cost for any transfer
     minimum_cost: 1
+    # Maximum cost for any transfer (cap at 2300 diamonds)
+    maximum_cost: 2300
 
 # Delivery time calculation settings
 delivery:

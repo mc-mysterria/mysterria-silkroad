@@ -72,22 +72,6 @@ public class ResourceTransferGUI {
             List<Component> lore = new ArrayList<>();
             lore.add(TranslationUtil.translatable("gui.available.amount", String.valueOf(available)).color(NamedTextColor.GRAY));
             lore.add(TranslationUtil.translatable("gui.selected.amount", String.valueOf(selected > 0 ? selected : 0)).color(NamedTextColor.GRAY));
-            
-            // Show NBT preservation info
-            if (itemStack.hasItemMeta()) {
-                lore.add(Component.empty());
-                lore.add(TranslationUtil.translatable("gui.nbt.preserved").color(NamedTextColor.GREEN));
-                if (itemStack.getItemMeta().hasDisplayName()) {
-                    lore.add(TranslationUtil.translatable("gui.nbt.custom.name").color(NamedTextColor.AQUA));
-                }
-                if (itemStack.getItemMeta().hasLore()) {
-                    lore.add(TranslationUtil.translatable("gui.nbt.custom.lore").color(NamedTextColor.AQUA));
-                }
-                if (itemStack.getItemMeta().hasEnchants()) {
-                    lore.add(TranslationUtil.translatable("gui.nbt.enchantments").color(NamedTextColor.LIGHT_PURPLE));
-                }
-            }
-            
             lore.add(Component.empty());
             lore.add(TranslationUtil.translatable("gui.click.instructions.left").color(NamedTextColor.YELLOW));
             lore.add(TranslationUtil.translatable("gui.click.instructions.shift.left").color(NamedTextColor.YELLOW));
@@ -276,7 +260,6 @@ public class ResourceTransferGUI {
             info.add(TranslationUtil.translatable("gui.transfer.items.count", String.valueOf(totalItems)).color(NamedTextColor.GRAY));
             info.add(TranslationUtil.translatable("gui.transfer.estimated.cost", String.valueOf(estimatedCost)).color(NamedTextColor.GRAY));
             info.add(TranslationUtil.translatable("gui.transfer.estimated.time", formatTime(estimatedTime)).color(NamedTextColor.GRAY));
-            info.add(TranslationUtil.translatable("gui.transfer.nbt.data.preserved").color(NamedTextColor.GREEN));
             info.add(Component.empty());
             info.add(TranslationUtil.translatable("gui.transfer.selected.items.header").color(NamedTextColor.GRAY));
             for (ItemStack item : selectedItems) {
@@ -319,7 +302,6 @@ public class ResourceTransferGUI {
             player.sendMessage(TranslationUtil.translatable("gui.transfer.success.items", String.valueOf(itemsToTransfer.size())).color(NamedTextColor.GRAY));
             player.sendMessage(TranslationUtil.translatable("gui.transfer.success.cost", String.valueOf(transfer.getCost())).color(NamedTextColor.GRAY));
             player.sendMessage(TranslationUtil.translatable("gui.transfer.success.delivery.time", formatTime(transfer.getRemainingTime())).color(NamedTextColor.GRAY));
-            player.sendMessage(TranslationUtil.translatable("gui.transfer.success.nbt.preserved").color(NamedTextColor.GREEN));
             player.closeInventory();
         } else {
             player.sendMessage(TranslationUtil.translatable("gui.transfer.failed.message").color(NamedTextColor.RED));
@@ -328,15 +310,18 @@ public class ResourceTransferGUI {
     
     private int calculateItemTransferCost(double distance, List<ItemStack> items) {
         SilkRoadConfig config = SilkRoad.getInstance().getPluginConfig();
-        
+
         // Distance cost from config (diamonds per block)
         double distanceCost = distance * config.getDistanceCostPerBlock();
-        
+
         // Stack cost from config (diamonds per item stack)
         int stackCount = items.size();
         double stackCost = stackCount * config.getStackCost();
-        
-        return (int) Math.max(config.getMinimumCost(), distanceCost + stackCost);
+
+        int totalCost = (int) (distanceCost + stackCost);
+
+        // Apply minimum and maximum caps
+        return Math.min(config.getMaximumCost(), Math.max(config.getMinimumCost(), totalCost));
     }
     
     private long calculateDeliveryTime(double distance) {
@@ -401,21 +386,6 @@ public class ResourceTransferGUI {
             lore.add(TranslationUtil.translatable("gui.transfer.selected.for.transfer").color(NamedTextColor.GREEN));
             lore.add(TranslationUtil.translatable("gui.transfer.amount.selected", String.valueOf(amount)).color(NamedTextColor.GRAY));
             
-            // Show NBT preservation info
-            if (item.hasItemMeta()) {
-                lore.add(Component.empty());
-                lore.add(TranslationUtil.translatable("gui.nbt.will.be.preserved").color(NamedTextColor.GREEN));
-                if (item.getItemMeta().hasDisplayName()) {
-                    lore.add(TranslationUtil.translatable("gui.nbt.custom.name").color(NamedTextColor.AQUA));
-                }
-                if (item.getItemMeta().hasLore()) {
-                    lore.add(TranslationUtil.translatable("gui.nbt.custom.lore").color(NamedTextColor.AQUA));
-                }
-                if (item.getItemMeta().hasEnchants()) {
-                    lore.add(TranslationUtil.translatable("gui.nbt.enchantments").color(NamedTextColor.LIGHT_PURPLE));
-                }
-            }
-            
             GuiItem guiItem = PaperItemBuilder.from(displayItem)
                     .name(Component.text(itemName).color(NamedTextColor.GREEN))
                     .lore(lore.toArray(Component[]::new))
@@ -436,8 +406,7 @@ public class ResourceTransferGUI {
         GuiItem confirmItem = PaperItemBuilder.from(Material.LIME_CONCRETE)
                 .name(TranslationUtil.translatable("gui.transfer.confirm.button").color(NamedTextColor.GREEN).decoration(TextDecoration.BOLD, true))
                 .lore(TranslationUtil.translatable("gui.transfer.confirm.click").color(NamedTextColor.GRAY),
-                      TranslationUtil.translatable("gui.transfer.confirm.all.inventory").color(NamedTextColor.GRAY),
-                      TranslationUtil.translatable("gui.transfer.confirm.nbt.preserved").color(NamedTextColor.GREEN).decoration(TextDecoration.BOLD, true))
+                      TranslationUtil.translatable("gui.transfer.confirm.all.inventory").color(NamedTextColor.GRAY))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     executeTransfer();

@@ -28,7 +28,11 @@ public class SilkRoadConfig {
     public int getMinimumCost() {
         return config.getInt("transfer.cost.minimum_cost", 1);
     }
-    
+
+    public int getMaximumCost() {
+        return config.getInt("transfer.cost.maximum_cost", 2300);
+    }
+
     // Delivery time settings
     public long getBaseTimeMs() {
         return config.getLong("delivery.base_time_ms", 300000L); // 5 minutes

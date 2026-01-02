@@ -306,10 +306,14 @@ public class CaravanManager {
     }
     
     private int calculateTransferCostLegacy(double distance, Map<Material, Integer> resources) {
+        SilkRoadConfig config = SilkRoad.getInstance().getPluginConfig();
         int totalItems = resources.values().stream().mapToInt(Integer::intValue).sum();
-        double baseCost = distance * 0.1;
-        double itemCost = totalItems * 0.5;
-        return (int) Math.max(1, baseCost + itemCost);
+        double baseCost = distance * config.getDistanceCostPerBlock();
+        double itemCost = totalItems * (config.getStackCost() / 4); // Legacy uses per-item cost, not per-stack
+        int totalCost = (int) (baseCost + itemCost);
+
+        // Apply minimum and maximum caps
+        return Math.min(config.getMaximumCost(), Math.max(config.getMinimumCost(), totalCost));
     }
     
     private long calculateDeliveryTime(double distance) {
@@ -908,15 +912,18 @@ public class CaravanManager {
     
     private int calculateItemTransferCost(double distance, List<ItemStack> itemResources) {
         SilkRoadConfig config = SilkRoad.getInstance().getPluginConfig();
-        
+
         // Distance cost from config (diamonds per block)
         double distanceCost = distance * config.getDistanceCostPerBlock();
-        
+
         // Stack cost from config (diamonds per item stack)
         int stackCount = itemResources.size();
         double stackCost = stackCount * config.getStackCost();
-        
-        return (int) Math.max(config.getMinimumCost(), distanceCost + stackCost);
+
+        int totalCost = (int) (distanceCost + stackCost);
+
+        // Apply minimum and maximum caps
+        return Math.min(config.getMaximumCost(), Math.max(config.getMinimumCost(), totalCost));
     }
 
     public void saveCaravan(Caravan caravan) {

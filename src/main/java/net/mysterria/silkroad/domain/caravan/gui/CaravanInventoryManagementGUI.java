@@ -7,21 +7,26 @@ import net.mysterria.silkroad.domain.caravan.manager.CaravanManager;
 import net.mysterria.silkroad.domain.caravan.model.Caravan;
 import net.mysterria.silkroad.utils.TranslationUtil;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.DragType;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class CaravanInventoryManagementGUI {
 
     private final CaravanManager caravanManager;
     private final Player player;
     private final Caravan caravan;
-    private boolean showPlayerInventory = true;
     private boolean isProcessing = false;
     
     public CaravanInventoryManagementGUI(CaravanManager caravanManager, Player player, Caravan caravan) {
@@ -36,14 +41,36 @@ public class CaravanInventoryManagementGUI {
                 .rows(6)
                 .create();
 
-        // Set drag protection
-        gui.setDragAction(event -> event.setCancelled(true));
+        // Set custom drag handler for drag-and-drop deposits
+        gui.setDragAction(event -> handleDragEvent(event, gui));
 
-        // Prevent shift-clicking from player's actual inventory into the GUI
+        // Set default click action to handle deposits and shift-clicks
         gui.setDefaultClickAction(event -> {
-            // Cancel all clicks that are not on GuiItems (prevents shift-clicking from player inventory)
-            if (event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory())) {
-                event.setCancelled(true);
+            int slot = event.getSlot();
+
+            // Handle clicks in GUI area
+            if (slot >= 9 && slot <= 44 && event.getClickedInventory() != null &&
+                !event.getClickedInventory().equals(player.getInventory())) {
+                // Click in GUI inventory area
+                ItemStack cursor = event.getCursor();
+
+                if (cursor != null && cursor.getType() != Material.AIR) {
+                    // Player has item on cursor - deposit it
+                    event.setCancelled(true);
+                    handleClickDeposit(cursor, event, gui);
+                }
+                // If cursor is empty and slot has item, let the withdrawal handler deal with it
+            }
+
+            // Handle shift-clicking from player's inventory to deposit
+            if (event.getClickedInventory() != null &&
+                event.getClickedInventory().equals(player.getInventory()) &&
+                event.getClick().isShiftClick()) {
+                ItemStack clicked = event.getCurrentItem();
+                if (clicked != null && clicked.getType() != Material.AIR) {
+                    event.setCancelled(true);
+                    handleShiftClickDeposit(clicked, event, gui);
+                }
             }
         });
 
@@ -56,295 +83,473 @@ public class CaravanInventoryManagementGUI {
         for (int i = 0; i < 54; i++) {
             gui.removeItem(i);
         }
-        
-        // Set drag protection first
-        gui.setDragAction(event -> event.setCancelled(true));
-        
-        // Set up inventory content
-        if (showPlayerInventory) {
-            setupPlayerInventoryView(gui);
-        } else {
-            setupCaravanInventoryView(gui);
-        }
-        
-        // Always set navigation items after inventory view is set up
+
+        // Add glass pane fillers first
+        setupGlassPaneFillers(gui);
+
+        // Set up caravan inventory view
+        setupCaravanInventoryView(gui);
+
+        // Set navigation items
         setupNavigationItems(gui);
-        
+
         // Update the GUI to refresh all items
         gui.update();
     }
     
     private void setupNavigationItems(Gui gui) {
-        // Toggle button
-        GuiItem toggleItem = PaperItemBuilder.from(showPlayerInventory ? Material.CHEST : Material.ENDER_CHEST)
-                .name(TranslationUtil.translatable("gui.toggle.view").color(NamedTextColor.YELLOW))
-                .lore(TranslationUtil.translatable("gui.currently.showing", (showPlayerInventory ? TranslationUtil.translate("gui.player.inventory") : TranslationUtil.translate("gui.caravan.inventory"))).color(NamedTextColor.GRAY),
-                      TranslationUtil.translatable("gui.click.switch", (showPlayerInventory ? TranslationUtil.translate("gui.caravan.inventory") : TranslationUtil.translate("gui.player.inventory"))).color(NamedTextColor.GRAY))
-                .asGuiItem(event -> {
-                    event.setCancelled(true);
-                    showPlayerInventory = !showPlayerInventory;
-                    setupInventoryGUI(gui);
-                });
-        gui.setItem(4, toggleItem);
-        
-        // Control buttons
+        // Get caravan status for info header
+        var optionalCaravan = caravanManager.getCaravan(caravan.getId());
+        Caravan currentCaravan = optionalCaravan.orElse(caravan);
+        int usedSlots = currentCaravan.getItemInventory().size();
+        int maxSlots = Caravan.MAX_INVENTORY_SLOTS;
+
+        // Info header
+        GuiItem infoItem = PaperItemBuilder.from(Material.CHEST)
+                .name(TranslationUtil.translatable("gui.caravan.inventory.label").color(NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, false))
+                .lore(TranslationUtil.translatable("gui.drag.drop.instruction").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                      TranslationUtil.translatable("gui.slots.usage", String.valueOf(usedSlots), String.valueOf(maxSlots), (usedSlots >= maxSlots ? TranslationUtil.translate("gui.slots.full") : "")).color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false))
+                .asGuiItem(event -> event.setCancelled(true));
+        gui.setItem(0, infoItem);
+
+        // Control buttons - Help/Tutorial
         GuiItem helpItem = PaperItemBuilder.from(Material.BOOK)
-                .name(TranslationUtil.translatable("gui.how.to.use").color(NamedTextColor.AQUA))
-                .lore(TranslationUtil.translatable("gui.player.view.instructions").color(NamedTextColor.GRAY),
-                      TranslationUtil.translatable("gui.player.view.left.click").color(NamedTextColor.GRAY),
-                      TranslationUtil.translatable("gui.player.view.shift.click").color(NamedTextColor.GRAY),
-                      TranslationUtil.translatable("gui.player.view.right.click").color(NamedTextColor.GRAY),
+                .name(Component.text("How to Use", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false))
+                .lore(Component.text("━━━━━━━━━━━━━━━━━━━━", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false),
+                      Component.text("Deposit Items:", NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false),
+                      Component.text("  • Click item, then click GUI", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                      Component.text("  • Right-click = deposit half", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                      Component.text("  • Shift-click = deposit all", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
                       Component.empty(),
-                      TranslationUtil.translatable("gui.caravan.view.instructions").color(NamedTextColor.GRAY),
-                      TranslationUtil.translatable("gui.caravan.view.left.click").color(NamedTextColor.GRAY),
-                      TranslationUtil.translatable("gui.caravan.view.shift.click").color(NamedTextColor.GRAY),
-                      TranslationUtil.translatable("gui.caravan.view.right.click").color(NamedTextColor.GRAY))
+                      Component.text("Withdraw Items:", NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false),
+                      Component.text("  • Left-click = withdraw all", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                      Component.text("  • Right-click = withdraw half", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+                      Component.text("━━━━━━━━━━━━━━━━━━━━", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false))
                 .asGuiItem(event -> event.setCancelled(true));
         gui.setItem(49, helpItem);
         
         GuiItem backItem = PaperItemBuilder.from(Material.ARROW)
-                .name(TranslationUtil.translatable("gui.back.arrow").color(NamedTextColor.GRAY))
+                .name(TranslationUtil.translatable("gui.back.arrow").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     CaravanManagementGUI managementGUI = new CaravanManagementGUI(caravanManager, player);
                     managementGUI.open();
                 });
         gui.setItem(45, backItem);
-        
+
         GuiItem closeItem = PaperItemBuilder.from(Material.BARRIER)
-                .name(TranslationUtil.translatable("gui.close").color(NamedTextColor.RED))
+                .name(TranslationUtil.translatable("gui.close").color(NamedTextColor.RED).decoration(TextDecoration.ITALIC, false))
                 .asGuiItem(event -> {
                     event.setCancelled(true);
                     player.closeInventory();
                 });
         gui.setItem(53, closeItem);
     }
-    
-    private void setupPlayerInventoryView(Gui gui) {
-        // Display player inventory items that can be deposited
-        // Get fresh inventory state to ensure we show current items after deposits
-        int itemCount = 0;
-        
-        // Get the current player inventory contents (fresh state)
-        ItemStack[] currentContents = player.getInventory().getContents();
-        
-        // Available slots: rows 2-4, columns 1-7 (excluding navigation areas)
-        int[] availableSlots = {
-                9, 10, 11, 12, 13, 14, 15, 16, 17,  // Row 2
-                18, 19, 20, 21, 22, 23, 24, 25, 26, // Row 3
-                27, 28, 29, 30, 31, 32, 33, 34, 35,  // Row 4
-                36, 37, 38, 39, 40, 41, 42, 43, 44 // Row 5
-        };
-        
-        int slotIndex = 0;
-        for (ItemStack item : currentContents) {
-            if (item != null && item.getType() != Material.AIR) {
-                if (slotIndex >= availableSlots.length) break;
-                
-                // Create a final reference for lambda
-                final ItemStack currentItem = item;
-                
-                GuiItem guiItem = PaperItemBuilder.from(item)
-                        .asGuiItem(event -> {
-                            event.setCancelled(true);
-                            handlePlayerItemStackClick(currentItem, event.getClick(), gui);
-                        });
-                
-                gui.setItem(availableSlots[slotIndex], guiItem);
-                slotIndex++;
-                itemCount++;
-            }
-        }
-        
-        if (itemCount == 0) {
-            GuiItem emptyItem = PaperItemBuilder.from(Material.BARRIER)
-                    .name(TranslationUtil.translatable("gui.no.items").color(NamedTextColor.GRAY))
-                    .lore(TranslationUtil.translatable("gui.inventory.empty").color(NamedTextColor.GRAY))
-                    .asGuiItem(event -> event.setCancelled(true));
-            gui.setItem(22, emptyItem);
-        }
-        
-        // Info header with caravan inventory status
-        var optionalCaravan = caravanManager.getCaravan(caravan.getId());
-        Caravan currentCaravan = optionalCaravan.orElse(caravan);
-        int usedSlots = currentCaravan.getItemInventory().size();
-        int maxSlots = Caravan.MAX_INVENTORY_SLOTS;
-        
-        GuiItem infoItem = PaperItemBuilder.from(Material.CHEST)
-                .name(TranslationUtil.translatable("gui.player.inventory.label").color(NamedTextColor.GREEN))
-                .lore(TranslationUtil.translatable("gui.deposit.instruction").color(NamedTextColor.GRAY),
-                      TranslationUtil.translatable("gui.slots.usage", String.valueOf(usedSlots), String.valueOf(maxSlots), (usedSlots >= maxSlots ? TranslationUtil.translate("gui.slots.full") : "")).color(NamedTextColor.GRAY))
+
+    private void setupGlassPaneFillers(Gui gui) {
+        // Fill non-interactive slots with glass panes to prevent incorrect deposits
+        int[] glassSlots = {1, 2, 3, 4, 5, 6, 7, 8, 46, 47, 48, 50, 51, 52};
+
+        GuiItem glassPane = PaperItemBuilder.from(Material.GRAY_STAINED_GLASS_PANE)
+                .name(Component.text("").decoration(TextDecoration.ITALIC, false))
                 .asGuiItem(event -> event.setCancelled(true));
-        gui.setItem(0, infoItem);
+
+        for (int slot : glassSlots) {
+            gui.setItem(slot, glassPane);
+        }
     }
-    
+
     private void setupCaravanInventoryView(Gui gui) {
-        // Display caravan inventory items that can be withdrawn
+        // Display caravan inventory items (drag-and-drop enabled)
         // Get the latest caravan state to ensure we show current inventory
         var optionalCaravan = caravanManager.getCaravan(caravan.getId());
         Caravan currentCaravan = optionalCaravan.orElse(caravan);
-        
-        
-        // Show ItemStack inventory (with NBT) instead of Material-based inventory
-        // Available slots: rows 2-4, columns 1-7 (excluding navigation areas)
+
+        // Available slots: rows 2-5 (slots 9-44)
         int[] availableSlots = {
             9, 10, 11, 12, 13, 14, 15, 16, 17,  // Row 2
-            18, 19, 20, 21, 22, 23, 24, 25, 26, // Row 3  
+            18, 19, 20, 21, 22, 23, 24, 25, 26, // Row 3
             27, 28, 29, 30, 31, 32, 33, 34, 35,  // Row 4
             36, 37, 38, 39, 40, 41, 42, 43, 44 // Row 5
         };
-        
+
+        // Display caravan items in GUI slots
+        // For withdrawals: player clicks item, then places it in their inventory
         int slotIndex = 0;
         for (ItemStack itemStack : currentCaravan.getItemInventory()) {
             if (slotIndex >= availableSlots.length) break;
-            
+
+            final ItemStack currentItem = itemStack;
             GuiItem item = PaperItemBuilder.from(itemStack)
-                    .asGuiItem(event -> {
-                        event.setCancelled(true);
-                        if (event.getClick() == org.bukkit.event.inventory.ClickType.SHIFT_LEFT && 
-                            event.getClickedInventory() != null && 
-                            event.getClickedInventory().equals(player.getInventory())) {
-                            return; // Prevent shift-clicking items from player inventory into GUI
-                        }
-                        handleCaravanItemStackClick(itemStack, event.getClick(), gui);
-                    });
-            
+                    .asGuiItem(event -> handleWithdrawal(currentItem, event, gui));
+
             gui.setItem(availableSlots[slotIndex], item);
             slotIndex++;
         }
-        
+
         if (currentCaravan.getItemInventory().isEmpty()) {
             GuiItem emptyItem = PaperItemBuilder.from(Material.BARRIER)
-                    .name(TranslationUtil.translatable("gui.no.items").color(NamedTextColor.GRAY))
-                    .lore(TranslationUtil.translatable("gui.caravan.empty").color(NamedTextColor.GRAY))
+                    .name(TranslationUtil.translatable("gui.no.items").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false))
+                    .lore(TranslationUtil.translatable("gui.caravan.empty").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false))
                     .asGuiItem(event -> event.setCancelled(true));
             gui.setItem(22, emptyItem);
         }
-        
-        // Info header
-        GuiItem infoItem = PaperItemBuilder.from(Material.ENDER_CHEST)
-                .name(TranslationUtil.translatable("gui.caravan.inventory.label").color(NamedTextColor.LIGHT_PURPLE))
-                .lore(TranslationUtil.translatable("gui.withdraw.instruction").color(NamedTextColor.GRAY))
-                .asGuiItem(event -> event.setCancelled(true));
-        gui.setItem(0, infoItem);
     }
-    
-    private void handlePlayerItemStackClick(ItemStack itemStack,
-                                          org.bukkit.event.inventory.ClickType clickType, Gui gui) {
-        // Prevent rapid clicks while processing
+
+    private void handleDragEvent(InventoryDragEvent event, Gui gui) {
+        // Prevent rapid actions during processing
         if (isProcessing) {
+            event.setCancelled(true);
             return;
         }
 
-        int amount = 0;
-        int available = itemStack.getAmount();
+        Set<Integer> rawSlots = event.getRawSlots();
+        ItemStack cursor = event.getCursor();
 
-        switch (clickType) {
-            case LEFT:
-                amount = 1;
+        if (cursor == null || cursor.getType() == Material.AIR) {
+            event.setCancelled(true);
+            return;
+        }
+
+        // Define protected slots (navigation, controls, glass panes)
+        Set<Integer> protectedSlots = Set.of(
+                0, 1, 2, 3, 4, 5, 6, 7, 8,           // Row 1
+                45, 46, 47, 48, 49, 50, 51, 52, 53  // Row 6
+        );
+
+        // Check if drag involves any protected slots
+        for (int rawSlot : rawSlots) {
+            if (protectedSlots.contains(rawSlot)) {
+                event.setCancelled(true);
+                return;
+            }
+        }
+
+        // Check if drag includes any valid GUI inventory slots (9-44)
+        // Note: rawSlots can include both GUI slots and player inventory slots when dragging
+        boolean includesGUISlots = rawSlots.stream()
+                .anyMatch(slot -> slot >= 9 && slot <= 44);
+
+        if (!includesGUISlots) {
+            // Drag doesn't involve GUI inventory slots, allow normal behavior
+            event.setCancelled(true);
+            return;
+        }
+
+        // Get only the GUI slots from the drag
+        Set<Integer> guiSlots = new HashSet<>();
+        for (int slot : rawSlots) {
+            if (slot >= 9 && slot <= 44) {
+                guiSlots.add(slot);
+            }
+        }
+
+        // Handle deposit: dragging items to GUI slots
+        handleDeposit(event, gui, cursor, guiSlots);
+    }
+
+    private void handleDeposit(InventoryDragEvent event, Gui gui, ItemStack cursor, Set<Integer> rawSlots) {
+        // Get current caravan state
+        var optionalCaravan = caravanManager.getCaravan(caravan.getId());
+        if (optionalCaravan.isEmpty()) {
+            event.setCancelled(true);
+            player.sendMessage(TranslationUtil.translate("inventory.deposit.failed"));
+            return;
+        }
+
+        Caravan currentCaravan = optionalCaravan.get();
+
+        // Check if player has permission
+        if (!currentCaravan.hasAccess(player.getUniqueId())) {
+            event.setCancelled(true);
+            return;
+        }
+
+        // Calculate amount to deposit based on drag type
+        DragType dragType = event.getType();
+        int totalAmount;
+        int slotsCount = rawSlots.size();
+
+        switch (dragType) {
+            case SINGLE:
+                // Distribute 1 item per slot
+                totalAmount = Math.min(slotsCount, cursor.getAmount());
                 break;
-            case SHIFT_LEFT:
-                amount = available;
-                break;
-            case RIGHT:
-                amount = Math.max(1, available / 2);
+            case EVEN:
+                // Distribute evenly
+                int perSlot = cursor.getAmount() / slotsCount;
+                totalAmount = perSlot * slotsCount;
                 break;
             default:
+                event.setCancelled(true);
                 return;
         }
 
-        amount = Math.min(amount, available);
+        if (totalAmount <= 0) {
+            event.setCancelled(true);
+            return;
+        }
 
-        // Create a copy of the itemStack with the desired amount
-        ItemStack toDeposit = itemStack.clone();
-        toDeposit.setAmount(amount);
+        // Create item stack to deposit
+        ItemStack toDeposit = cursor.clone();
+        toDeposit.setAmount(totalAmount);
 
-        // Set processing flag to prevent rapid clicks
+        // Check if caravan can accept the item
+        if (!currentCaravan.canAddItemStack(toDeposit)) {
+            event.setCancelled(true);
+            player.sendMessage(TranslationUtil.translate("inventory.full",
+                    String.valueOf(currentCaravan.getItemInventory().size()),
+                    String.valueOf(Caravan.MAX_INVENTORY_SLOTS)));
+            return;
+        }
+
+        // Set processing flag and cancel event
         isProcessing = true;
+        event.setCancelled(true);
 
-        if (caravanManager.addItemStackToCaravan(caravan.getId(), player, toDeposit)) {
-            String itemName = itemStack.hasItemMeta() && itemStack.getItemMeta().hasDisplayName()
-                    ? itemStack.getItemMeta().getDisplayName()
-                    : itemStack.getType().name().toLowerCase().replace('_', ' ');
-            player.sendMessage(TranslationUtil.translate("inventory.deposited", String.valueOf(amount), itemName));
-            // Refresh GUI with slight delay to allow inventory sync
-            org.bukkit.Bukkit.getScheduler().runTaskLater(
+        // Add directly to caravan (item is on cursor, not in inventory!)
+        boolean added = currentCaravan.addItemStack(toDeposit);
+        if (!added) {
+            isProcessing = false;
+            player.sendMessage(TranslationUtil.translate("inventory.deposit.failed"));
+            return;
+        }
+
+        // Save caravan
+        try {
+            caravanManager.saveCaravan(currentCaravan);
+        } catch (Exception e) {
+            // Rollback on save failure
+            currentCaravan.removeItemStack(toDeposit, toDeposit.getAmount());
+            isProcessing = false;
+            player.sendMessage(TranslationUtil.translate("inventory.deposit.failed"));
+            return;
+        }
+
+        // Success - update cursor
+        int remaining = cursor.getAmount() - totalAmount;
+        if (remaining > 0) {
+            cursor.setAmount(remaining);
+            event.setCursor(cursor);
+        } else {
+            event.setCursor(null);
+        }
+
+        player.sendMessage(TranslationUtil.translate("inventory.deposited",
+                String.valueOf(totalAmount), getItemDisplayName(toDeposit)));
+
+        // Refresh GUI after 1 tick
+        org.bukkit.Bukkit.getScheduler().runTaskLater(
                 net.mysterria.silkroad.SilkRoad.getInstance(),
                 () -> {
                     setupInventoryGUI(gui);
                     isProcessing = false;
                 },
                 1L
+        );
+    }
+
+    private void handleShiftClickDeposit(ItemStack itemStack, InventoryClickEvent event, Gui gui) {
+        // Prevent rapid actions during processing
+        if (isProcessing) {
+            return;
+        }
+
+        // Set processing flag
+        isProcessing = true;
+
+        // Use the manager method since the item is in player's inventory
+        // (not on cursor like in handleClickDeposit)
+        if (caravanManager.addItemStackToCaravan(caravan.getId(), player, itemStack)) {
+            player.sendMessage(TranslationUtil.translate("inventory.deposited",
+                    String.valueOf(itemStack.getAmount()), getItemDisplayName(itemStack)));
+
+            // Refresh GUI after 1 tick
+            org.bukkit.Bukkit.getScheduler().runTaskLater(
+                    net.mysterria.silkroad.SilkRoad.getInstance(),
+                    () -> {
+                        setupInventoryGUI(gui);
+                        isProcessing = false;
+                    },
+                    1L
             );
         } else {
-            // Reset processing flag on failure
+            // Failed - send error message
             isProcessing = false;
-            // Check if it's a full inventory issue
             var optionalCaravan = caravanManager.getCaravan(caravan.getId());
             if (optionalCaravan.isPresent()) {
                 Caravan currentCaravan = optionalCaravan.get();
-                if (!currentCaravan.canAddItemStack(toDeposit)) {
-                    player.sendMessage(TranslationUtil.translate("inventory.full", String.valueOf(currentCaravan.getItemInventory().size()), String.valueOf(net.mysterria.silkroad.domain.caravan.model.Caravan.MAX_INVENTORY_SLOTS)));
+                if (!currentCaravan.canAddItemStack(itemStack)) {
+                    player.sendMessage(TranslationUtil.translate("inventory.full",
+                            String.valueOf(currentCaravan.getItemInventory().size()),
+                            String.valueOf(Caravan.MAX_INVENTORY_SLOTS)));
                 } else {
                     player.sendMessage(TranslationUtil.translate("inventory.deposit.failed"));
                 }
-            } else {
-                player.sendMessage(TranslationUtil.translate("inventory.deposit.failed"));
             }
         }
     }
-    
-    private void handleCaravanItemStackClick(ItemStack itemStack,
-                                           org.bukkit.event.inventory.ClickType clickType, Gui gui) {
-        // Prevent rapid clicks while processing
+
+    private void handleClickDeposit(ItemStack cursor, InventoryClickEvent event, Gui gui) {
+        // Prevent rapid actions during processing
         if (isProcessing) {
             return;
         }
 
-        int amount = 0;
-        int available = itemStack.getAmount();
-
-        switch (clickType) {
-            case LEFT:
-                amount = 1;
-                break;
-            case SHIFT_LEFT:
-                amount = available;
-                break;
-            case RIGHT:
-                amount = Math.max(1, available / 2);
-                break;
-            default:
-                return;
+        // Get current caravan state
+        var optionalCaravan = caravanManager.getCaravan(caravan.getId());
+        if (optionalCaravan.isEmpty()) {
+            isProcessing = false;
+            player.sendMessage(TranslationUtil.translate("inventory.deposit.failed"));
+            return;
         }
 
-        amount = Math.min(amount, available);
+        Caravan currentCaravan = optionalCaravan.get();
 
-        // Set processing flag to prevent rapid clicks
+        // Check if player has permission
+        if (!currentCaravan.hasAccess(player.getUniqueId())) {
+            isProcessing = false;
+            return;
+        }
+
+        // Determine amount to deposit based on click type
+        int amount;
+        boolean isRightClick = event.getClick().isRightClick();
+
+        if (isRightClick) {
+            // Right-click: deposit half (rounded up)
+            amount = (int) Math.ceil(cursor.getAmount() / 2.0);
+        } else {
+            // Left-click: deposit entire stack
+            amount = cursor.getAmount();
+        }
+
+        // Create item stack to deposit
+        ItemStack toDeposit = cursor.clone();
+        toDeposit.setAmount(amount);
+
+        // Check if caravan can accept the item
+        if (!currentCaravan.canAddItemStack(toDeposit)) {
+            player.sendMessage(TranslationUtil.translate("inventory.full",
+                    String.valueOf(currentCaravan.getItemInventory().size()),
+                    String.valueOf(Caravan.MAX_INVENTORY_SLOTS)));
+            return;
+        }
+
+        // Set processing flag
         isProcessing = true;
 
-        if (caravanManager.removeItemStackFromCaravan(caravan.getId(), player, itemStack, amount)) {
-            String itemName = itemStack.hasItemMeta() && itemStack.getItemMeta().hasDisplayName()
-                    ? itemStack.getItemMeta().getDisplayName()
-                    : itemStack.getType().name().toLowerCase().replace('_', ' ');
-            player.sendMessage(TranslationUtil.translate("inventory.withdrew", String.valueOf(amount), itemName));
-            // Refresh GUI with slight delay to allow inventory sync
-            org.bukkit.Bukkit.getScheduler().runTaskLater(
+        // Add directly to caravan (item is on cursor, not in inventory!)
+        boolean added = currentCaravan.addItemStack(toDeposit);
+        if (!added) {
+            isProcessing = false;
+            player.sendMessage(TranslationUtil.translate("inventory.deposit.failed"));
+            return;
+        }
+
+        // Save caravan
+        try {
+            caravanManager.saveCaravan(currentCaravan);
+        } catch (Exception e) {
+            // Rollback on save failure
+            currentCaravan.removeItemStack(toDeposit, toDeposit.getAmount());
+            isProcessing = false;
+            player.sendMessage(TranslationUtil.translate("inventory.deposit.failed"));
+            return;
+        }
+
+        // Success - update cursor
+        int remaining = cursor.getAmount() - amount;
+        if (remaining > 0) {
+            cursor.setAmount(remaining);
+            event.setCursor(cursor);
+        } else {
+            event.setCursor(null);
+        }
+
+        player.sendMessage(TranslationUtil.translate("inventory.deposited",
+                String.valueOf(amount), getItemDisplayName(toDeposit)));
+
+        // Refresh GUI after 1 tick
+        org.bukkit.Bukkit.getScheduler().runTaskLater(
                 net.mysterria.silkroad.SilkRoad.getInstance(),
                 () -> {
                     setupInventoryGUI(gui);
                     isProcessing = false;
                 },
                 1L
+        );
+    }
+
+    private void handleWithdrawal(ItemStack itemStack, InventoryClickEvent event, Gui gui) {
+        // Prevent rapid clicks while processing
+        if (isProcessing) {
+            event.setCancelled(true);
+            return;
+        }
+
+        // Cancel the default event - we'll handle the withdrawal manually
+        event.setCancelled(true);
+
+        // Determine amount based on click type
+        int amount = 0;
+        int available = itemStack.getAmount();
+
+        switch (event.getClick()) {
+            case LEFT:
+                // Withdraw entire stack
+                amount = available;
+                break;
+            case RIGHT:
+                // Withdraw half (rounded up)
+                amount = (int) Math.ceil(available / 2.0);
+                break;
+            case SHIFT_LEFT:
+            case SHIFT_RIGHT:
+                // Withdraw entire stack
+                amount = available;
+                break;
+            default:
+                return;
+        }
+
+        amount = Math.min(amount, available);
+        if (amount <= 0) {
+            return;
+        }
+
+        // Set processing flag
+        isProcessing = true;
+
+        // Attempt withdrawal
+        if (caravanManager.removeItemStackFromCaravan(caravan.getId(), player, itemStack, amount)) {
+            player.sendMessage(TranslationUtil.translate("inventory.withdrew",
+                    String.valueOf(amount), getItemDisplayName(itemStack)));
+
+            // Refresh GUI after 1 tick
+            org.bukkit.Bukkit.getScheduler().runTaskLater(
+                    net.mysterria.silkroad.SilkRoad.getInstance(),
+                    () -> {
+                        setupInventoryGUI(gui);
+                        isProcessing = false;
+                    },
+                    1L
             );
         } else {
-            // Reset processing flag on failure
+            // Failed - send error message
             isProcessing = false;
             player.sendMessage(TranslationUtil.translate("inventory.withdraw.failed"));
         }
     }
-    
-    
+
+    private String getItemDisplayName(ItemStack itemStack) {
+        if (itemStack.hasItemMeta() && itemStack.getItemMeta().hasDisplayName()) {
+            return LegacyComponentSerializer.legacySection()
+                    .serialize(itemStack.getItemMeta().displayName());
+        }
+        return itemStack.getType().name().toLowerCase().replace('_', ' ');
+    }
+
     private Component text(String legacyText) {
         return LegacyComponentSerializer.legacySection().deserialize(legacyText);
     }
