@@ -7,6 +7,7 @@ import dev.triumphteam.gui.guis.PaginatedGui;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.mysterria.silkroad.domain.caravan.manager.CaravanManager;
 import net.mysterria.silkroad.domain.caravan.model.Caravan;
 import net.mysterria.silkroad.utils.TranslationUtil;
@@ -79,8 +80,9 @@ public class CaravanInventoryGUI {
         for (org.bukkit.inventory.ItemStack itemStack : caravan.getItemInventory()) {
             if (itemStack == null || itemStack.getType() == Material.AIR) continue;
             
-            String itemName = itemStack.hasItemMeta() && itemStack.getItemMeta().hasDisplayName() 
-                    ? itemStack.getItemMeta().getDisplayName() 
+            Component _nameComp = itemStack.hasItemMeta() ? itemStack.getItemMeta().displayName() : null;
+            String itemName = _nameComp != null
+                    ? PlainTextComponentSerializer.plainText().serialize(_nameComp)
                     : itemStack.getType().name().toLowerCase().replace('_', ' ');
             
             GuiItem item = ItemBuilder.from(itemStack.clone())

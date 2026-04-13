@@ -11,6 +11,7 @@ import net.mysterria.silkroad.domain.caravan.model.ResourceTransfer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -182,8 +183,9 @@ public class CaravanManagementGUI {
             if (slot >= 45) break;
             if (itemStack == null || itemStack.getType() == Material.AIR) continue;
             
-            String itemName = itemStack.hasItemMeta() && itemStack.getItemMeta().hasDisplayName() 
-                    ? itemStack.getItemMeta().getDisplayName() 
+            Component _nameComp = itemStack.hasItemMeta() ? itemStack.getItemMeta().displayName() : null;
+            String itemName = _nameComp != null
+                    ? PlainTextComponentSerializer.plainText().serialize(_nameComp)
                     : itemStack.getType().name().toLowerCase().replace('_', ' ');
             
             GuiItem item = PaperItemBuilder.from(itemStack.clone())

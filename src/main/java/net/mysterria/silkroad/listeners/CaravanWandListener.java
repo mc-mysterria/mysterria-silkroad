@@ -5,6 +5,7 @@ import net.mysterria.silkroad.utils.TranslationUtil;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -66,8 +67,10 @@ public class CaravanWandListener implements Listener {
             return false;
         }
         
-        return meta.hasCustomModelData() && meta.getCustomModelData() == 12345 && 
-               meta.hasDisplayName() && meta.getDisplayName().contains("Caravan Territory Wand");
+        Component nameComponent = meta.displayName();
+        return meta.hasCustomModelData() && meta.getCustomModelData() == 12345 &&
+               nameComponent != null &&
+               PlainTextComponentSerializer.plainText().serialize(nameComponent).contains("Caravan Territory Wand");
     }
     
     private void handleSelectChunk(Player player, boolean add) {

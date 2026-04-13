@@ -12,6 +12,7 @@ import net.mysterria.silkroad.utils.ResourcePackGenerator;
 import net.mysterria.silkroad.utils.TranslationManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.mysterria.silkroad.domain.caravan.manager.CaravanCreationResult;
 import net.mysterria.silkroad.domain.caravan.model.Caravan;
@@ -39,8 +40,13 @@ public class CaravanCommand {
         ItemStack wand = new ItemStack(Material.BLAZE_ROD);
         ItemMeta meta = wand.getItemMeta();
         if (meta != null) {
-            meta.setDisplayName(TranslationUtil.translate("item.caravan.wand"));
-            meta.setLore(List.of("§7Right-click: §aSelect current chunk", "§7Left-click: §cDeselect current chunk", "§7Shift + Left-click: §c✖ Clear all selections", "§7Use §e/sr create <name> §7to create caravan from selected chunks"));
+            meta.displayName(Component.text(TranslationUtil.translate("item.caravan.wand")).decoration(TextDecoration.ITALIC, false));
+            meta.lore(List.of(
+                LegacyComponentSerializer.legacySection().deserialize("§7Right-click: §aSelect current chunk").decoration(TextDecoration.ITALIC, false),
+                LegacyComponentSerializer.legacySection().deserialize("§7Left-click: §cDeselect current chunk").decoration(TextDecoration.ITALIC, false),
+                LegacyComponentSerializer.legacySection().deserialize("§7Shift + Left-click: §c✖ Clear all selections").decoration(TextDecoration.ITALIC, false),
+                LegacyComponentSerializer.legacySection().deserialize("§7Use §e/sr create <name> §7to create caravan from selected chunks").decoration(TextDecoration.ITALIC, false)
+            ));
             meta.setCustomModelData(12345);
             wand.setItemMeta(meta);
         }

@@ -75,6 +75,8 @@ public class YamlConfiguration {
 
     public Map<String, Object> getSection(String path) {
         Object section = data.get(path);
-        return (section instanceof Map) ? (Map<String, Object>) section : new HashMap<>();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> result = (section instanceof Map) ? (Map<String, Object>) section : new HashMap<>();
+        return result;
     }
 }

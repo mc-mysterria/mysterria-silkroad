@@ -4,7 +4,6 @@ import net.mysterria.silkroad.SilkRoad;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.translation.GlobalTranslator;
 import net.kyori.adventure.translation.TranslationStore;
-import net.kyori.adventure.util.UTF8ResourceBundleControl;
 
 import java.text.MessageFormat;
 import java.util.HashSet;
@@ -46,8 +45,7 @@ public class TranslationManager {
             String bundleName = "lang/lang";
 
             ResourceBundle bundle = ResourceBundle.getBundle(bundleName, locale,
-                    SilkRoad.getInstance().getClass().getClassLoader(),
-                    new UTF8ResourceBundleControl());
+                    SilkRoad.getInstance().getClass().getClassLoader());
 
             Set<String> originalKeys = bundle.keySet();
             Set<String> namespacedKeys = new HashSet<>();

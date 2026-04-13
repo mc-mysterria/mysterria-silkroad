@@ -105,8 +105,9 @@ public class ResourceSelectionGUI {
                 }
             }
             
-            String itemName = itemStack.hasItemMeta() && itemStack.getItemMeta().hasDisplayName() 
-                    ? itemStack.getItemMeta().getDisplayName() 
+            Component _nameComp = itemStack.hasItemMeta() ? itemStack.getItemMeta().displayName() : null;
+            String itemName = _nameComp != null
+                    ? net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(_nameComp)
                     : itemStack.getType().name().toLowerCase().replace('_', ' ');
             
             List<Component> lore = new ArrayList<>();
@@ -229,8 +230,8 @@ public class ResourceSelectionGUI {
             return;
         }
         
-        ResourceTransfer transfer = caravanManager.createTransferLegacy(player, sourceCaravan.getId(), 
-                destinationCaravan.getId(), new HashMap<>(selectedResources));
+        ResourceTransfer transfer = caravanManager.createTransfer(player, sourceCaravan.getId(),
+                destinationCaravan.getId(), new ArrayList<>(selectedItemStacks));
         
         if (transfer != null) {
             player.closeInventory();

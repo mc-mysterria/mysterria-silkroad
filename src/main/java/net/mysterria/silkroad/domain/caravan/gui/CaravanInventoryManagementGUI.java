@@ -330,9 +330,9 @@ public class CaravanInventoryManagementGUI {
         int remaining = cursor.getAmount() - totalAmount;
         if (remaining > 0) {
             cursor.setAmount(remaining);
-            event.setCursor(cursor);
+            event.getView().setCursor(cursor);
         } else {
-            event.setCursor(null);
+            event.getView().setCursor(null);
         }
 
         player.sendMessage(TranslationUtil.translate("inventory.deposited",
@@ -462,9 +462,9 @@ public class CaravanInventoryManagementGUI {
         int remaining = cursor.getAmount() - amount;
         if (remaining > 0) {
             cursor.setAmount(remaining);
-            event.setCursor(cursor);
+            event.getView().setCursor(cursor);
         } else {
-            event.setCursor(null);
+            event.getView().setCursor(null);
         }
 
         player.sendMessage(TranslationUtil.translate("inventory.deposited",

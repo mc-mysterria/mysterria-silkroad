@@ -1,11 +1,11 @@
 plugins {
     id 'java'
-    id('com.gradleup.shadow') version '8.3.2'
-    id('xyz.jpenilla.run-paper') version "2.3.1"
+    id('com.gradleup.shadow') version '9.4.1'
+    id('xyz.jpenilla.run-paper') version "3.0.2"
 }
 
 group = 'net.mysterria.silkroad'
-version = '1.0.1'
+version = '1.1'
 
 repositories {
     mavenCentral()
@@ -37,17 +37,17 @@ repositories {
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:26.1.1.build.29-alpha")
     implementation("dev.triumphteam:triumph-gui-paper:3.1.13-SNAPSHOT")
     implementation("net.kyori:adventure-platform-bukkit:4.3.4")
     implementation 'org.yaml:snakeyaml:2.0'
     implementation("dev.rollczi:litecommands-bukkit:3.10.4")
-    compileOnly 'org.projectlombok:lombok:1.18.36'
-    annotationProcessor 'org.projectlombok:lombok:1.18.36'
+    compileOnly 'org.projectlombok:lombok:1.18.38'
+    annotationProcessor 'org.projectlombok:lombok:1.18.38'
     compileOnly 'net.william278.husktowns:husktowns-bukkit:3.1.4'
 }
 
-def targetJavaVersion = 21
+def targetJavaVersion = 25
 java {
     def javaVersion = JavaVersion.toVersion(targetJavaVersion)
     sourceCompatibility = javaVersion
@@ -58,6 +58,7 @@ java {
 }
 
 tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
     options.encoding = 'UTF-8'
     options.compilerArgs.add("-parameters")
     if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
@@ -83,6 +84,6 @@ processResources {
 
 tasks {
     runServer {
-        minecraftVersion("1.21.8")
+        minecraftVersion("26.1.1")
     }
 }
